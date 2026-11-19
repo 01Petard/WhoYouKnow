@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@rollup/rollup-linux-arm-musleabihf@4.68.7'
+  - '@rollup/rollup-linux-ppc64-musl@4.68.7'
+  - '@rollup/rollup-win32-x64-gnu@4.68.7'
