@@ -77,8 +77,8 @@ function buildClusters(
             members: people.filter((person) => circle.groups.some((group) => person.groups.includes(group))),
           })),
           {
-            key: '圈子外',
-            label: '圈子外',
+            key: '未归类圈子',
+            label: '未归类圈子',
             members: people.filter(
               (person) => !circles.some((circle) => circle.groups.some((group) => person.groups.includes(group))),
             ),
