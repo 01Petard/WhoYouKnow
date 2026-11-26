@@ -1,0 +1,136 @@
+/*
+ * [INPUT]: 使用设计 Token 与 Layout 导航结构。
+ * [OUTPUT]: 提供应用外壳、导航和公共页面宽度。
+ * [POS]: 桌面侧栏与移动端导航共享品牌、状态和焦点样式。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+.app-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-area { flex: 1; min-width: 0; width: 100%; }
+.main-area:focus-visible { outline: none; }
+
+.content, .shell-notice {
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+.content {
+  padding-top: clamp(22px, 4vw, 42px);
+  padding-bottom: calc(var(--tabbar-height) + 30px + env(safe-area-inset-bottom));
+}
+
+.shell-notice { padding-top: var(--sp-3); }
+.shell-notice a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+.skip-link {
+  position: fixed;
+  left: var(--sp-4);
+  top: var(--sp-4);
+  transform: translateY(-200%);
+  z-index: 100;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--color-action);
+  box-shadow: var(--shadow-2);
+}
+.skip-link:focus { transform: translateY(0); }
+
+.brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: var(--text-heading); }
+.brand img { display: block; flex: 0 0 auto; }
+.brand-name { color: var(--text-heading); font-family: var(--font-display); font-size: 18px; font-weight: 750; letter-spacing: -.045em; line-height: 1.15; }
+.brand-copy { display: flex; flex-direction: column; gap: 3px; }
+.brand-tagline { color: var(--text-secondary); font-size: var(--fs-caption); }
+
+.mobile-bar {
+  min-height: 58px;
+  padding: calc(var(--sp-2) + env(safe-area-inset-top)) var(--page-gutter) var(--sp-2);
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.mobile-bar .brand { min-height: 42px; }
+.sidebar { display: none; }
+
+.tabbar {
+  position: fixed;
+  z-index: 10;
+  inset: auto 0 0;
+  padding: 4px max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left));
+  min-height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-tabbar);
+}
+
+.tabbar-item {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.15;
+  font-weight: var(--fw-medium);
+}
+
+.tabbar-item svg { box-sizing: content-box; padding: 3px 9px; border-radius: var(--radius-xs); }
+.tabbar-item[aria-current="page"] { color: var(--color-action-active); font-weight: var(--fw-semibold); }
+.tabbar-item[aria-current="page"] svg { background: var(--color-action-wash); }
+.tabbar-item:focus-visible { outline-offset: -3px; }
+
+@media (min-width: 1024px) {
+  .app-shell { flex-direction: row; align-items: flex-start; }
+  .mobile-bar, .tabbar { display: none; }
+  .content { padding-bottom: 60px; }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    display: flex;
+    flex: 0 0 var(--sidebar-width);
+    flex-direction: column;
+    gap: 48px;
+    min-width: 0;
+    padding: 34px 16px 18px;
+    border-right: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+  .sidebar > .brand { padding-inline: 7px; }
+  .sidebar-nav { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 22px; overflow-y: auto; padding: 3px; margin: -3px; }
+  .sidebar-links { display: grid; gap: 6px; }
+  .sidebar-item, .sidebar-profile {
+    min-height: var(--tap-min-size);
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-weight: var(--fw-medium);
+    transition: background var(--motion-fast), color var(--motion-fast);
+  }
+  .sidebar-item svg, .sidebar-profile > svg { flex: 0 0 auto; }
+  .sidebar-item:hover, .sidebar-profile:hover { background: var(--bg-subtle); color: var(--text-heading); }
+  .sidebar-item[aria-current="page"], .sidebar-profile[aria-current="page"] {
+    background: var(--color-action-wash);
+    color: var(--color-action-active);
+    font-weight: var(--fw-semibold);
+  }
+  .sidebar-profile { position: relative; padding-inline: 7px; }
+  .sidebar-profile::before { content: ''; position: absolute; top: -12px; inset-inline: 0; height: 1px; background: var(--border-subtle); }
+  .sidebar-profile .avatar { width: 35px; height: 35px; }
+  .sidebar-profile-copy { display: grid; gap: 2px; line-height: 1.25; min-width: 0; flex: 1; }
+  .sidebar-profile-copy strong { color: var(--text-heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-profile-copy > span { color: var(--text-secondary); font-size: 12px; font-weight: var(--fw-regular); }
+}

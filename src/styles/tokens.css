@@ -1,46 +1,47 @@
 /*
- * [INPUT]: 不依赖其它样式文件；变量清单取自视觉设计规范 v1.0 第 7 节
+ * [INPUT]: 不依赖其它样式文件；定义联系人工作区的主题与排版
  * [OUTPUT]: 在 :root 上声明颜色、字体、字号、间距、圆角、阴影、动效与布局尺寸等 CSS 自定义属性
  * [POS]: 设计变量的单一来源，被 global.css 首行 @import；换主题只改本文件，组件与页面只引用变量
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-/* 视觉设计规范 v1.0 第 7 节 Tokens —— 原样落成 :root 变量 */
 :root {
   /* ---- Color: Primary ---- */
-  --color-primary-50:  #F0F4FA;
-  --color-primary-100: #E1E9F4;
-  --color-primary-200: #C4D4E9;
-  --color-primary-500: #325B8F; /* 主色 */
-  --color-primary-600: #294C7A;
-  --color-primary-700: #214069;
+  --color-primary-50:  #f0f2ff;
+  --color-primary-100: #e5e8ff;
+  --color-primary-200: #cbd2fc;
+  --color-primary-500: #3946cc; /* 主色 */
+  --color-primary-600: #303cb7;
+  --color-primary-700: #283292;
 
-  /* ---- Color: Neutral (warm paper) ---- */
-  --color-neutral-0:   #FFFFFF;
-  --color-neutral-50:  #FBFAF9; /* 页面底 */
-  --color-neutral-100: #F4F3F0;
-  --color-neutral-200: #E9E6E2;
-  --color-neutral-300: #D9D4CE;
-  --color-neutral-400: #AEA49E;
-  --color-neutral-500: #7C716A;
-  --color-neutral-600: #6E655E;
-  --color-neutral-700: #534B46; /* 正文 */
-  --color-neutral-900: #302B27; /* 标题/墨色 */
+  /* ---- 中性色 ---- */
+  --color-neutral-0:   #ffffff;
+  --color-neutral-50:  #f7f8fb; /* 页面底 */
+  --color-neutral-100: #eff1f6;
+  --color-neutral-200: #e4e7ef;
+  --color-neutral-300: #d6dbe7;
+  --color-neutral-400: #858fa6;
+  --color-neutral-500: #626d85;
+  --color-neutral-600: #535f77;
+  --color-neutral-700: #354159; /* 正文 */
+  --color-neutral-900: #161b30; /* 标题/墨色 */
 
   /* ---- Color: Semantic status ---- */
   --status-mutual-bg: #EAF6F0;  --status-mutual-dot: #267E55;  --status-mutual-ink: #1C6945;
-  --status-danger-bg: #FCEFEE;  --status-danger-dot: #DC3428;   --status-danger-ink: #BA261C;
-  --marker-important-bg: #FEF7E7; --marker-important-fill: #E2A412; --marker-important-ink: #965D08;
+  --status-oneway-bg: #fff7e7; --status-oneway-dot: #dfc18b; --status-oneway-ink: #714b14;
+  --status-danger-bg: #fff0ef;  --status-danger-dot: #a92d38;   --status-danger-ink: #a22331;
+  --marker-important-bg: #fbf4de; --marker-important-fill: #9f6909; --marker-important-ink: #785208;
 
   /* ---- Typography ---- */
-  --font-sans: "Inter", "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont,
-               "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+  --font-sans: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont,
+               "Segoe UI", "Hiragino Sans GB", "Microsoft YaHei",
                "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
-  --font-numeric: var(--font-sans);
-  --fs-display: 28px; --lh-display: 36px;
-  --fs-h1: 22px;      --lh-h1: 30px;
+  --font-display: "Avenir Next", var(--font-sans);
+  --font-numeric: var(--font-display);
+  --fs-display: 44px; --lh-display: 52px;
+  --fs-h1: 36px;      --lh-h1: 44px;
   --fs-h2: 18px;      --lh-h2: 26px;
   --fs-h3: 16px;      --lh-h3: 24px;
-  --fs-body: 15px;    --lh-body: 22px;
+  --fs-body: 14px;    --lh-body: 22px;
   --fs-body-lg: 16px; --lh-body-lg: 24px;
   --fs-label: 14px;   --lh-label: 20px;
   --fs-caption: 12px; --lh-caption: 18px;
@@ -50,22 +51,22 @@
   /* ---- Spacing (4pt base, 8pt rhythm) ---- */
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
   --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
-  --page-gutter: 16px;
-  --card-padding: 16px;
+  --page-gutter: clamp(18px, 3.4vw, 54px);
+  --card-padding: clamp(16px, 2vw, 24px);
 
   /* ---- Radius ---- */
   --radius-xs: 6px;  --radius-sm: 10px; --radius-md: 14px;
-  --radius-lg: 20px; --radius-pill: 999px;
+  --radius-lg: 22px; --radius-pill: 999px;
 
   /* ---- Shadow ---- */
-  --shadow-1: 0 1px 2px rgba(48,43,39,.03), 0 2px 8px rgba(48,43,39,.04);
-  --shadow-2: 0 8px 28px rgba(48,43,39,.09);
-  --shadow-3: 0 20px 52px rgba(48,43,39,.15);
+  --shadow-1: 0 1px 2px rgb(22 27 48 / 4%);
+  --shadow-2: 0 12px 32px rgb(22 27 48 / 9%);
+  --shadow-3: 0 24px 64px rgb(22 27 48 / 18%);
 
   /* ---- Layout ---- */
-  --tabbar-height: 56px;
-  --content-max-width: 1280px;
-  --sidebar-width: 216px;
+  --tabbar-height: 62px;
+  --content-max-width: 1460px;
+  --sidebar-width: 222px;
   --tap-min-size: 44px;
   --list-row-min-height: 64px;
 
@@ -78,6 +79,7 @@
   --bg-surface: var(--color-neutral-0);
   --bg-subtle: var(--color-neutral-100);
   --border-subtle: var(--color-neutral-200);
+  --border-strong: var(--color-neutral-400);
   --border-default: var(--color-neutral-300);
   --text-primary: var(--color-neutral-700);
   --text-heading: var(--color-neutral-900);
@@ -88,9 +90,9 @@
   --color-action-hover: var(--color-primary-600);
   --color-action-active: var(--color-primary-700);
   --color-action-wash: var(--color-primary-50);
-  --overlay: rgba(48,43,39,.40);
-  --focus-ring: rgba(50,91,143,.15);
-  --shadow-tabbar: 0 -1px 4px rgba(48,43,39,.03);
+  --overlay: rgb(22 27 48 / 45%);
+  --focus-ring: rgb(57 70 204 / 16%);
+  --shadow-tabbar: 0 -4px 24px rgb(22 27 48 / 5%);
   --bg-toast: var(--color-neutral-900);
   --text-toast-action: var(--color-primary-200);
 }

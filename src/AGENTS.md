@@ -9,6 +9,6 @@
 - [pages](pages/AGENTS.md) 放置路由页面和设置面板。
 - [store](store/AGENTS.md) 持有业务快照和界面状态。
 - [util](util/AGENTS.md) 提供查询、编解码和存储适配。
-- `styles/` 提供设计 Token 和公共样式。
+- [styles](styles/AGENTS.md) 提供主题、基础组件和页面样式。
 
 [PROTOCOL]: Update this header on change, then check AGENTS.md

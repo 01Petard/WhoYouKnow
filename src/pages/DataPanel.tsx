@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 ../components 的 Alert/BackupPanel/useToast；依赖 ../store/useStore 的 data/importPeople；依赖 ../util/backup 读取 CSV 文件；依赖 ../util/csv 的解析与导出；CSV 预览按表头匹配
  * [OUTPUT]: 导出 DataPanel 组件
- * [POS]: 系统设置中的 JSON/CSV 文件面板；同名增量更新、与「我的信息」同名行自动跳过、JSON 整体恢复
+ * [POS]: 并列展示备份恢复与 CSV 操作。CSV 导入先预览，再按姓名增量写入。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useRef, useState } from 'react'
@@ -43,7 +43,6 @@ export function DataPanel() {
   }, [parsing])
 
   const exportCsvPeople = () => {
-    toast.show('正在生成文件…')
     downloadText('linkmap-people.csv', peopleCsv(data))
     toast.show('已导出人物 CSV')
   }
@@ -110,21 +109,21 @@ export function DataPanel() {
   }
 
   return (
-    <>
+    <div className="settings-data-grid">
       <BackupPanel />
-      <section className="settings-data-section">
+      <section className="settings-data-section" aria-labelledby="csv-settings-heading">
         <div className="settings-data-head">
-          <span className="settings-data-icon"><FileSpreadsheet size={20} aria-hidden="true" /></span>
+          <span className="settings-data-icon"><FileSpreadsheet size={20} strokeWidth={1.7} aria-hidden="true" /></span>
           <div>
-            <h2>联系人信息</h2>
-            <p className="hint">仅处理联系人字段；分组不存在时自动创建；与「我的信息」同名的行会自动跳过。</p>
+            <h2 id="csv-settings-heading">联系人表格</h2>
+            <p className="hint">按姓名匹配联系人。与「我的信息」同名的行会跳过。</p>
           </div>
         </div>
 
         <div className="settings-data-row">
           <div className="settings-data-copy">
             <h3>导出联系人表格</h3>
-            <p className="hint">UTF-8 BOM，可直接用 Excel 打开。</p>
+            <p className="hint">可用 Excel 打开，适合查看或整理联系人。</p>
           </div>
           <div className="settings-data-actions">
             <button type="button" className="btn btn-secondary btn-sm" onClick={exportCsvPeople}>
@@ -135,20 +134,15 @@ export function DataPanel() {
 
         <div className="settings-data-row">
           <div className="settings-data-copy">
-            <h3>下载表格模板</h3>
-            <p className="hint">姓名必填；标签与分组可用「，」「|」「、」「；」分隔多个值。</p>
-          </div>
-          <div className="settings-data-actions">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => downloadText('linkmap-import-template.csv', templateCsv())}>
-              <Download size={16} aria-hidden="true" /> 下载模板
-            </button>
-          </div>
-        </div>
-
-        <div className="settings-data-row">
-          <div className="settings-data-copy">
             <h3>从表格导入</h3>
-            <p className="hint">同名联系人按姓名增量更新：只补充空白字段并合并标签/分组，不覆盖已有内容。</p>
+            <p className="hint">补充同名联系人的空白字段。多个标签或分组可用「|」分隔。</p>
+            <button
+              type="button"
+              className="settings-template"
+              onClick={() => downloadText('linkmap-import-template.csv', templateCsv())}
+            >
+              <Download size={13} aria-hidden="true" /> 下载模板
+            </button>
           </div>
           <div className="settings-data-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={() => csvInput.current?.click()} disabled={parsing || importing}>
@@ -166,12 +160,19 @@ export function DataPanel() {
         </div>
 
         {parsing && showParseLoading && (
-          <div style={{ marginTop: 'var(--sp-3)' }}>
-            <p className="hint tabular">
-              {progress.total >= 100 && progress.total > 0
-                ? `正在解析第 ${progress.current} / ${progress.total} 行`
-                : '正在解析文件…'}
-            </p>
+          <div className="settings-preview settings-import-progress">
+            <div>
+              <p className="hint tabular" role="status">
+                {progress.total >= 100
+                  ? `正在解析第 ${progress.current} / ${progress.total} 行`
+                  : '正在解析文件…'}
+              </p>
+              <progress
+                aria-label="CSV 解析进度"
+                max={progress.total || undefined}
+                value={progress.total >= 100 ? progress.current : undefined}
+              />
+            </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => { cancelled.current = true; setParsing(false) }}>
               取消
             </button>
@@ -179,11 +180,11 @@ export function DataPanel() {
         )}
 
         {csvFatal.length > 0 && (
-          <div style={{ marginTop: 'var(--sp-3)' }}>
+          <div className="settings-import-errors">
             <Alert tone="danger">
               <div>
                 <strong>导入未执行，请修正后重试。</strong>
-                <ul style={{ marginTop: 6 }}>
+                <ul>
                   {csvFatal.slice(0, 20).map((message, index) => <li key={index}>{message}</li>)}
                   {csvFatal.length > 20 && <li>……另有 {csvFatal.length - 20} 条</li>}
                 </ul>
@@ -194,10 +195,11 @@ export function DataPanel() {
 
         {outcome && csvFatal.length === 0 && (
           <div className="settings-preview">
-            <p className="tabular">
-              将新增 <strong>{addedCount}</strong> 人 · 增量更新 <strong>{duplicateRows.length}</strong> 人 · 格式错误{' '}
-              <strong>{outcome.errors.length}</strong> 行
-            </p>
+            <dl className="settings-import-totals">
+              <div><dt>将新增</dt><dd className="tabular">{addedCount} 人</dd></div>
+              <div><dt>增量更新</dt><dd className="tabular">{duplicateRows.length} 人</dd></div>
+              <div><dt>格式错误</dt><dd className="tabular">{outcome.errors.length} 行</dd></div>
+            </dl>
             {selfRows.length > 0 && (
               <p className="hint" style={{ marginTop: 6 }}>
                 已跳过与「我的信息」同名的 {selfRows.length} 行：
@@ -227,7 +229,6 @@ export function DataPanel() {
           </div>
         )}
       </section>
-
-    </>
+    </div>
   )
 }

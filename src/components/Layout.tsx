@@ -1,32 +1,33 @@
 /**
- * [INPUT]: 依赖 react-router-dom 的 Link/Outlet/useLocation/useNavigate；依赖 lucide-react 图标；依赖 ../store/useStore 的 storageSaving/storageError/storageNotice；依赖 ./Alert 与 ./Logo
- * [OUTPUT]: 导出 Layout 组件
- * [POS]: 应用外壳与主导航（侧栏 + 底部 tabbar）的唯一实现；五项导航为人脉/关系网/我的信息/整理分类/系统设置
+ * [INPUT]: 依赖路由匹配、存储状态、品牌图标与联系人头像。
+ * [OUTPUT]: 导出 Layout。
+ * [POS]: 在桌面侧栏和移动端底部导航提供相同入口，并在页面上方显示保存状态。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { FolderCog, Network, Settings, UserRound, Users } from 'lucide-react'
+import { BookUser, ChevronRight, Folders, Network, Settings, UserRound } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Alert } from './Alert'
 import { Logo } from './Logo'
+import { Avatar } from './PersonCard'
 
 const NAV = [
-  { to: '/people', label: '人脉', Icon: Users },
+  { to: '/people', label: '人脉', Icon: BookUser },
   { to: '/network', label: '关系网', Icon: Network },
-  { to: '/profile', label: '我的信息', Icon: UserRound },
-  { to: '/categories', label: '整理分类', Icon: FolderCog },
+  { to: '/categories', label: '整理分类', Icon: Folders },
   { to: '/settings', label: '系统设置', Icon: Settings },
 ] as const
 
+const PROFILE = { to: '/profile', label: '我的信息', Icon: UserRound } as const
+
 function isSectionActive(pathname: string, to: string): boolean {
-  if (to === '/people') return pathname.startsWith('/people') || pathname.startsWith('/person')
-  return pathname.startsWith(to)
+  if (to === '/people') return pathname === '/people' || pathname.startsWith('/person/')
+  return pathname === to || pathname.startsWith(`${to}/`)
 }
 
 function parentOf(pathname: string): string | null {
-  if (pathname.startsWith('/person')) return '/people'
-  if (pathname.startsWith('/network/')) return '/network'
+  if (pathname.startsWith('/person/')) return '/people'
   if (pathname === '/profile/edit') return '/profile'
   if (pathname.startsWith('/categories/groups') || pathname.startsWith('/categories/circles')) return '/categories'
   return null
@@ -35,83 +36,95 @@ function parentOf(pathname: string): string | null {
 export function Layout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const storageSaving = useStore((s) => s.storageSaving)
-  const storageError = useStore((s) => s.storageError)
-  const storageNotice = useStore((s) => s.storageNotice)
+  const me = useStore((state) => state.data.me)
+  const storageSaving = useStore((state) => state.storageSaving)
+  const storageError = useStore((state) => state.storageError)
+  const storageNotice = useStore((state) => state.storageNotice)
+  const profileActive = isSectionActive(pathname, PROFILE.to)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
-      const parent = parentOf(window.location.pathname)
+      const parent = parentOf(pathname)
       if (parent) navigate(parent)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [navigate])
+  }, [navigate, pathname])
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">
-        跳到主要内容
-      </a>
-
+      <a className="skip-link" href="#main-content">跳到主要内容</a>
       <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark"><Logo size={28} /></span>
-          <span className="brand-copy">
-            <span className="brand-name">WhoYouKnow</span>
-            <span className="brand-tagline">你的人脉</span>
-          </span>
-        </div>
+        <Link to="/people" className="brand" aria-label="WhoYouKnow 首页">
+          <Logo size={38} />
+          <span className="brand-name">WhoYouKnow</span>
+        </Link>
         <nav className="sidebar-nav" aria-label="主导航">
-          {NAV.map(({ to, label, Icon }) => {
-            const active = isSectionActive(pathname, to)
-            return (
+          <div className="sidebar-links">
+            {NAV.map(({ to, label, Icon }) => (
               <Link
                 key={to}
                 to={to}
                 className="sidebar-item"
-                aria-current={active ? 'page' : undefined}
+                aria-current={isSectionActive(pathname, to) ? 'page' : undefined}
               >
-                <Icon size={20} aria-hidden="true" />
+                <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
                 {label}
               </Link>
-            )
-          })}
+            ))}
+          </div>
+          <Link
+            to={PROFILE.to}
+            className="sidebar-profile"
+            aria-label={PROFILE.label}
+            aria-current={profileActive ? 'page' : undefined}
+          >
+            {me ? <Avatar person={me} small /> : <UserRound size={20} aria-hidden="true" />}
+            <span className="sidebar-profile-copy">
+              <strong>{me?.name ?? PROFILE.label}</strong>
+              {me && <span>{PROFILE.label}</span>}
+            </span>
+            <ChevronRight size={15} aria-hidden="true" />
+          </Link>
         </nav>
-        <p className="sidebar-foot">Every connection counts.</p>
       </aside>
 
+      <header className="mobile-bar">
+        <Link to="/people" className="brand" aria-label="WhoYouKnow 首页">
+          <Logo size={32} />
+          <span className="brand-name">WhoYouKnow</span>
+        </Link>
+      </header>
+
       <main className="main-area" id="main-content" tabIndex={-1}>
-        {storageSaving && (
-          <p className="hint" role="status" style={{ padding: 'var(--sp-2) var(--page-gutter) 0' }}>正在保存改动…</p>
-        )}
-        {(storageError || storageNotice) && (
-          <div style={{ padding: 'var(--sp-4) var(--page-gutter) 0' }}>
-            <Alert tone={storageError ? 'danger' : 'info'}>
-              {storageNotice ?? '保存失败，数据仍在当前页面。'}
-              {storageError && <> <Link to="/settings">前往系统设置重试</Link></>}
-            </Alert>
+        {(storageSaving || storageError || storageNotice) && (
+          <div className="shell-notice">
+            {storageSaving ? (
+              <p className="hint" role="status">正在保存改动…</p>
+            ) : (
+              <Alert tone={storageError ? 'danger' : 'info'}>
+                {storageNotice ?? '保存失败，数据仍在当前页面。'}
+                {storageError && <> <Link to="/settings">前往系统设置重试</Link></>}
+              </Alert>
+            )}
           </div>
         )}
         <Outlet />
       </main>
 
       <nav className="tabbar" aria-label="主导航">
-        {NAV.map(({ to, label, Icon }) => {
-          const active = isSectionActive(pathname, to)
-          return (
-            <Link
-              key={to}
-              to={to}
-              className="tabbar-item"
-              aria-current={active ? 'page' : undefined}
-            >
-              <Icon size={24} strokeWidth={1.75} aria-hidden="true" />
-              <span>{label}</span>
-            </Link>
-          )
-        })}
+        {[...NAV, PROFILE].map(({ to, label, Icon }) => (
+          <Link
+            key={to}
+            to={to}
+            className="tabbar-item"
+            aria-current={isSectionActive(pathname, to) ? 'page' : undefined}
+          >
+            <Icon size={21} strokeWidth={1.8} aria-hidden="true" />
+            <span>{label}</span>
+          </Link>
+        ))}
       </nav>
     </div>
   )

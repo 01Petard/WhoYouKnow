@@ -1,12 +1,12 @@
 /**
- * [INPUT]: 依赖 react 的 useState/DragEvent；依赖 lucide-react 图标；依赖 ../components 的 CircleEditor/ConfirmDialog/Modal/useToast；依赖 ../store/useStore 的标签/分组/圈子增删改与排序动作；依赖 ../util/queries 的 circleMembers
- * [OUTPUT]: 导出 CategoriesPage 组件
- * [POS]: 「整理分类」页面；标签、分组、圈子三栏并列，支持按钮排序与拖拽排序，减少页面跳转与留白
+ * [INPUT]: 依赖分类增删改与排序动作、圈子成员查询、编辑对话框和联系人快捷分类组件。
+ * [OUTPUT]: 导出 CategoriesPage。
+ * [POS]: 在分组、圈子与标签的列表之间切换，并就地补齐联系人的分类。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import { useState, type DragEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronUp, FolderCog, GripVertical, Layers, Pencil, Plus, Tag, Trash2, Users } from 'lucide-react'
+import { useMemo, useState, type DragEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight, ChevronDown, ChevronUp, Folder, GripVertical, Layers, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { CircleEditor } from '../components/CircleEditor'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { QuickSelect } from '../components/QuickSelect'
@@ -19,6 +19,19 @@ type CategoryKind = 'tag' | 'group' | 'circle'
 interface DragState { kind: CategoryKind; value: string }
 interface NameEditor { kind: 'tag' | 'group'; mode: 'add' | 'rename'; original?: string; value: string }
 interface Removing { kind: CategoryKind; value: string; label: string }
+interface CategoryEntry {
+  value: string
+  name: string
+  meta: string
+  to?: string
+  edit: () => void
+}
+
+const CATEGORY_VIEWS = [
+  { kind: 'group', label: '分组', Icon: Folder },
+  { kind: 'circle', label: '圈子', Icon: Layers },
+  { kind: 'tag', label: '标签', Icon: Tag },
+] as const
 
 export function CategoriesPage() {
   const data = useStore((s) => s.data)
@@ -38,27 +51,79 @@ export function CategoriesPage() {
   const addToGroup = useStore((s) => s.addToGroup)
   const addTagToPerson = useStore((s) => s.addTagToPerson)
   const toast = useToast()
-  const navigate = useNavigate()
-  const ungrouped = data.people.filter((person) => person.groups.length === 0)
-  const untagged = data.people.filter((person) => person.tags.length === 0)
 
+  const [view, setView] = useState<CategoryKind>('group')
   const [editor, setEditor] = useState<NameEditor | null>(null)
+  const [fieldError, setFieldError] = useState('')
   const [removing, setRemoving] = useState<Removing | null>(null)
   const [circleEditorOpen, setCircleEditorOpen] = useState(false)
   const [editingCircle, setEditingCircle] = useState<Circle | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const [over, setOver] = useState<DragState | null>(null)
 
-  const tagCount = (name: string) => data.people.filter((p) => p.tags.includes(name)).length
-  const groupCount = (name: string) => data.people.filter((p) => p.groups.includes(name)).length
+  const { ungrouped, untagged, tagCounts, groupCounts } = useMemo(() => {
+    const tagCounts = new Map<string, number>()
+    const groupCounts = new Map<string, number>()
+    for (const person of data.people) {
+      for (const tag of new Set(person.tags)) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
+      for (const group of new Set(person.groups)) groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1)
+    }
+    return {
+      ungrouped: data.people.filter((person) => person.groups.length === 0),
+      untagged: data.people.filter((person) => person.tags.length === 0),
+      tagCounts,
+      groupCounts,
+    }
+  }, [data.people])
+
+  const selectedView = CATEGORY_VIEWS.find(({ kind }) => kind === view)!
+  const counts = { group: data.groups.length, circle: data.circles.length, tag: data.tags.length }
+
+  const openNameEditor = (next: NameEditor) => {
+    setFieldError('')
+    setEditor(next)
+  }
+
+  const openCircleEditor = (circle: Circle | null) => {
+    setEditingCircle(circle)
+    setCircleEditorOpen(true)
+  }
+
+  const entries: CategoryEntry[] = view === 'circle'
+    ? data.circles.map((circle) => ({
+        value: circle.id,
+        name: circle.name,
+        meta: `${circle.groups.length} 个分组 · ${circleMembers(data, circle).length} 人`,
+        to: `/categories/circles/${circle.id}`,
+        edit: () => openCircleEditor(circle),
+      }))
+    : (view === 'group' ? data.groups : data.tags).map((name) => ({
+        value: name,
+        name,
+        meta: `${(view === 'group' ? groupCounts : tagCounts).get(name) ?? 0} 人`,
+        to: view === 'group' ? `/categories/groups?name=${encodeURIComponent(name)}` : undefined,
+        edit: () => openNameEditor({ kind: view, mode: 'rename', original: name, value: name }),
+      }))
+
+  const addCategory = () => {
+    if (view === 'circle') openCircleEditor(null)
+    else openNameEditor({ kind: view, mode: 'add', value: '' })
+  }
 
   const saveEditor = () => {
     if (!editor) return
     const value = editor.value.trim()
+    if (!value) {
+      setFieldError('请输入名称。')
+      return
+    }
     const ok = editor.kind === 'tag'
       ? editor.mode === 'add' ? addTag(value) : renameTag(editor.original ?? '', value)
       : editor.mode === 'add' ? addGroup(value) : renameGroup(editor.original ?? '', value)
-    if (!ok) { toast.show('名称为空或已存在'); return }
+    if (!ok) {
+      setFieldError('保存失败，请检查名称是否已存在。')
+      return
+    }
     toast.showAfterFileSave(editor.mode === 'add' ? '已新增' : '已重命名')
     setEditor(null)
   }
@@ -76,168 +141,176 @@ export function CategoriesPage() {
     setRemoving(null)
   }
 
-  const drop = (kind: CategoryKind, target: string) => {
-    if (!drag || drag.kind !== kind) return
-    const list = kind === 'tag' ? data.tags : kind === 'group' ? data.groups : data.circles.map((circle) => circle.id)
+  const move = { tag: moveTag, group: moveGroup, circle: moveCircle }[view]
+  const reorder = { tag: reorderTags, group: reorderGroups, circle: reorderCircles }[view]
+  const drop = (target: string) => {
+    if (!drag || drag.kind !== view) return
+    const list = entries.map(({ value }) => value)
     const from = list.indexOf(drag.value)
     const to = list.indexOf(target)
     setDrag(null)
     setOver(null)
     if (from < 0 || to < 0 || from === to) return
-    const next = [...list]
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved)
-    if (kind === 'tag') reorderTags(next)
-    else if (kind === 'group') reorderGroups(next)
-    else reorderCircles(next)
+    const [moved] = list.splice(from, 1)
+    list.splice(to, 0, moved)
+    reorder(list)
   }
 
-  const dragProps = (kind: CategoryKind, value: string) => ({
+  const dragProps = (value: string) => ({
     draggable: true,
-    onDragStart: () => setDrag({ kind, value }),
-    onDragOver: (event: DragEvent<HTMLDivElement>) => {
-      if (!drag || drag.kind !== kind) return
-      event.preventDefault()
-      setOver({ kind, value })
+    onDragStart: (event: DragEvent<HTMLLIElement>) => {
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData('text/plain', value)
+      setDrag({ kind: view, value })
     },
-    onDrop: (event: DragEvent<HTMLDivElement>) => {
+    onDragOver: (event: DragEvent<HTMLLIElement>) => {
+      if (!drag || drag.kind !== view) return
       event.preventDefault()
-      drop(kind, value)
+      event.dataTransfer.dropEffect = 'move'
+      setOver({ kind: view, value })
+    },
+    onDrop: (event: DragEvent<HTMLLIElement>) => {
+      event.preventDefault()
+      drop(value)
     },
     onDragEnd: () => { setDrag(null); setOver(null) },
   })
 
-  const rowClass = (kind: CategoryKind, value: string) =>
-    `category-row${over?.kind === kind && over.value === value ? ' category-row-over' : ''}`
+  const removalMessage = removing
+    ? {
+        group: `删除「${removing.label}」会移除联系人和圈子中的分组关联。联系人档案将保留。`,
+        tag: `删除「${removing.label}」会移除联系人档案上的该标签。`,
+        circle: `删除「${removing.label}」会移除此圈子。分组和联系人档案将保留。`,
+      }[removing.kind]
+    : ''
+
+  const queues = [
+    {
+      key: 'group',
+      title: '未分组',
+      Icon: Folder,
+      people: ungrouped,
+      options: data.groups,
+      label: '加入分组',
+      empty: '所有联系人都已加入分组。',
+      assign: (id: string, name: string) => addToGroup(name, [id]) > 0,
+      message: (person: string, name: string) => `已将 ${person} 加入「${name}」`,
+    },
+    {
+      key: 'tag',
+      title: '未加标签',
+      Icon: Tag,
+      people: untagged,
+      options: data.tags,
+      label: '添加标签',
+      empty: '所有联系人都已加标签。',
+      assign: (id: string, name: string) => addTagToPerson(name, id),
+      message: (person: string, name: string) => `已给 ${person} 添加标签「${name}」`,
+    },
+  ]
 
   return (
-    <div className="content">
-      <div className="page-header"><h1 className="page-title">整理分类</h1></div>
-      <p className="hint" style={{ marginTop: 'calc(-1 * var(--sp-3))', marginBottom: 'var(--sp-3)' }}>
-        拖动左侧手柄或使用上下按钮调整顺序；分组与圈子的顺序会影响关系网。
-      </p>
-      <div className="category-grid">
-        <section className="card category-card">
-          <div className="category-head">
-            <span className="category-title"><Tag size={16} aria-hidden="true" /> 标签<span className="page-count tabular">{data.tags.length}</span></span>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditor({ kind: 'tag', mode: 'add', value: '' })}>
-              <Plus size={15} aria-hidden="true" /> 新增
-            </button>
-          </div>
-          {data.tags.length === 0 ? <p className="hint">还没有标签。</p> : data.tags.map((name, index) => (
-            <div className={rowClass('tag', name)} key={name} {...dragProps('tag', name)}>
-              <GripVertical size={15} className="category-grip" aria-hidden="true" />
-              <span className="category-name">{name}</span>
-              <span className="category-meta tabular">{tagCount(name)} 人</span>
-              <div className="category-actions">
-                <button type="button" className="btn-icon" aria-label={`上移${name}`} disabled={index === 0} onClick={() => moveTag(name, -1)}><ChevronUp size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`下移${name}`} disabled={index === data.tags.length - 1} onClick={() => moveTag(name, 1)}><ChevronDown size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`重命名${name}`} onClick={() => setEditor({ kind: 'tag', mode: 'rename', original: name, value: name })}><Pencil size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`删除${name}`} onClick={() => setRemoving({ kind: 'tag', value: name, label: name })}><Trash2 size={16} aria-hidden="true" /></button>
-              </div>
-            </div>
-          ))}
-        </section>
+    <div className="content organize-page">
+      <header className="page-header organize-heading">
+        <h1 className="page-title">整理分类</h1>
+      </header>
 
-        <section className="card category-card">
-          <div className="category-head">
-            <span className="category-title"><FolderCog size={16} aria-hidden="true" /> 分组<span className="page-count tabular">{data.groups.length}</span></span>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditor({ kind: 'group', mode: 'add', value: '' })}>
-              <Plus size={15} aria-hidden="true" /> 新增
+      <div className="organize-workspace">
+        <div className="organize-picker" role="group" aria-label="分类视图">
+          {CATEGORY_VIEWS.map(({ kind, label, Icon }) => (
+            <button
+              key={kind}
+              type="button"
+              className="organize-view"
+              aria-pressed={view === kind}
+              aria-controls="category-list"
+              onClick={() => setView(kind)}
+            >
+              <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+              <span>{label}</span>
+              <span className="organize-view-count tabular">{counts[kind]}</span>
             </button>
-          </div>
-          {data.groups.length === 0 ? <p className="hint">还没有分组。</p> : data.groups.map((name, index) => (
-            <div className={rowClass('group', name)} key={name} {...dragProps('group', name)}>
-              <GripVertical size={15} className="category-grip" aria-hidden="true" />
-              <button type="button" className="category-name category-link" onClick={() => navigate(`/categories/groups?name=${encodeURIComponent(name)}`)}>{name}</button>
-              <span className="category-meta tabular">{groupCount(name)} 人</span>
-              <div className="category-actions">
-                <button type="button" className="btn-icon" aria-label={`上移${name}`} disabled={index === 0} onClick={() => moveGroup(name, -1)}><ChevronUp size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`下移${name}`} disabled={index === data.groups.length - 1} onClick={() => moveGroup(name, 1)}><ChevronDown size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`重命名${name}`} onClick={() => setEditor({ kind: 'group', mode: 'rename', original: name, value: name })}><Pencil size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`删除${name}`} onClick={() => setRemoving({ kind: 'group', value: name, label: name })}><Trash2 size={16} aria-hidden="true" /></button>
-              </div>
-            </div>
           ))}
-        </section>
+        </div>
 
-        <section className="card category-card">
-          <div className="category-head">
-            <span className="category-title"><Layers size={16} aria-hidden="true" /> 圈子<span className="page-count tabular">{data.circles.length}</span></span>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setEditingCircle(null); setCircleEditorOpen(true) }}>
-              <Plus size={15} aria-hidden="true" /> 新增
-            </button>
-          </div>
-          {data.circles.length === 0 ? <p className="hint">还没有圈子。</p> : data.circles.map((circle, index) => (
-            <div className={rowClass('circle', circle.id)} key={circle.id} {...dragProps('circle', circle.id)}>
-              <GripVertical size={15} className="category-grip" aria-hidden="true" />
-              <div className="category-body">
-                <button type="button" className="category-name category-link" onClick={() => navigate(`/categories/circles/${circle.id}`)}>{circle.name}</button>
-                <span className="hint">{circle.groups.length} 个分组 · {circleMembers(data, circle).length} 人</span>
-              </div>
-              <div className="category-actions">
-                <button type="button" className="btn-icon" aria-label={`上移${circle.name}`} disabled={index === 0} onClick={() => moveCircle(circle.id, -1)}><ChevronUp size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`下移${circle.name}`} disabled={index === data.circles.length - 1} onClick={() => moveCircle(circle.id, 1)}><ChevronDown size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`编辑圈子${circle.name}`} onClick={() => { setEditingCircle(circle); setCircleEditorOpen(true) }}><Pencil size={16} aria-hidden="true" /></button>
-                <button type="button" className="btn-icon" aria-label={`删除圈子${circle.name}`} onClick={() => setRemoving({ kind: 'circle', value: circle.id, label: circle.name })}><Trash2 size={16} aria-hidden="true" /></button>
-              </div>
+        <section className="card organize-list" id="category-list" aria-labelledby="category-list-title">
+          <header className="organize-panel-heading">
+            <div>
+              <h2 id="category-list-title" className="section-title">{selectedView.label}</h2>
+              {entries.length > 1 && (
+                <p className="hint">{view === 'tag' ? '拖动或使用箭头排序。' : '拖动或使用箭头调整在关系网中的顺序。'}</p>
+              )}
             </div>
-          ))}
+            <button type="button" className="btn btn-primary btn-sm" onClick={addCategory}>
+              <Plus size={16} aria-hidden="true" /> 新增{selectedView.label}
+            </button>
+          </header>
+          {entries.length === 0 ? (
+            <div className="organize-empty">
+              <selectedView.Icon size={23} strokeWidth={1.55} aria-hidden="true" />
+              <p className="hint">还没有{selectedView.label}。</p>
+            </div>
+          ) : (
+            <ul className="organize-entries">
+              {entries.map(({ value, name, meta, to, edit }, index) => (
+                <li
+                  className={`organize-entry${over?.kind === view && over.value === value ? ' organize-entry-over' : ''}`}
+                  key={value}
+                  {...dragProps(value)}
+                >
+                  <GripVertical size={16} className="organize-grip" aria-hidden="true" />
+                  <div className="organize-entry-main">
+                    {to ? (
+                      <Link className="organize-entry-name" to={to}>
+                        <span>{name}</span><ArrowUpRight size={14} aria-hidden="true" />
+                      </Link>
+                    ) : <span className="organize-entry-name">{name}</span>}
+                    <span className="hint tabular">{meta}</span>
+                  </div>
+                  <div className="organize-entry-actions" role="group" aria-label={`${name}的操作`}>
+                    <div className="organize-order">
+                      <button type="button" className="btn-icon" aria-label={`上移${name}`} title="上移" disabled={index === 0} onClick={() => move(value, -1)}><ChevronUp size={17} aria-hidden="true" /></button>
+                      <button type="button" className="btn-icon" aria-label={`下移${name}`} title="下移" disabled={index === entries.length - 1} onClick={() => move(value, 1)}><ChevronDown size={17} aria-hidden="true" /></button>
+                    </div>
+                    <button type="button" className="btn-icon" aria-label={view === 'circle' ? `编辑圈子${name}` : `重命名${name}`} title={view === 'circle' ? '编辑圈子' : '重命名'} onClick={edit}><Pencil size={16} aria-hidden="true" /></button>
+                    <button type="button" className="btn-icon organize-remove" aria-label={view === 'circle' ? `删除圈子${name}` : `删除${name}`} title="删除" onClick={() => setRemoving({ kind: view, value, label: name })}><Trash2 size={16} aria-hidden="true" /></button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
 
-      <section className="card gap-card">
-        <div className="gap-column">
-          <div className="category-head">
-            <span className="category-title"><Users size={16} aria-hidden="true" /> 未分组<span className="page-count tabular">{ungrouped.length}</span></span>
-          </div>
-          {ungrouped.length === 0 ? (
-            <p className="hint">所有联系人都已加入分组。</p>
-          ) : (
-            <div className="gap-list">
-              {ungrouped.slice(0, 10).map((person) => (
-                <div className="gap-row" key={person.id}>
-                  <button type="button" className="category-name category-link" onClick={() => navigate(`/person/${person.id}`)}>{person.name}</button>
-                  <QuickSelect
-                    label="加入分组…"
-                    options={data.groups}
-                    onSelect={(group) => {
-                      if (addToGroup(group, [person.id]) > 0) toast.showAfterFileSave(`已将 ${person.name} 加入「${group}」`)
-                      else toast.show('加入失败，请重试')
-                    }}
-                  />
-                </div>
-              ))}
-              {ungrouped.length > 10 && <p className="hint">另有 {ungrouped.length - 10} 位…</p>}
-            </div>
-          )}
-        </div>
-        <div className="gap-column">
-          <div className="category-head">
-            <span className="category-title"><Tag size={16} aria-hidden="true" /> 未加标签<span className="page-count tabular">{untagged.length}</span></span>
-          </div>
-          {untagged.length === 0 ? (
-            <p className="hint">所有联系人都已加标签。</p>
-          ) : (
-            <div className="gap-list">
-              {untagged.slice(0, 10).map((person) => (
-                <div className="gap-row" key={person.id}>
-                  <button type="button" className="category-name category-link" onClick={() => navigate(`/person/${person.id}`)}>{person.name}</button>
-                  <QuickSelect
-                    label="添加标签…"
-                    options={data.tags}
-                    onSelect={(tag) => {
-                      if (addTagToPerson(tag, person.id)) toast.showAfterFileSave(`已给 ${person.name} 添加标签「${tag}」`)
-                      else toast.show('添加失败，请重试')
-                    }}
-                  />
-                </div>
-              ))}
-              {untagged.length > 10 && <p className="hint">另有 {untagged.length - 10} 位…</p>}
-            </div>
-          )}
-        </div>
-      </section>
+      <div className="organize-queues">
+        {queues.map(({ key, title, Icon, people, options, label, empty, assign, message }) => (
+          <section className="card organize-queue" key={key} aria-labelledby={`organize-queue-${key}`}>
+            <header className="organize-queue-heading">
+              <span className="organize-section-icon"><Icon size={17} strokeWidth={1.7} aria-hidden="true" /></span>
+              <h2 className="section-title" id={`organize-queue-${key}`}>{title}</h2>
+              <span className="organize-queue-count tabular">{people.length} 人</span>
+            </header>
+            {people.length === 0 ? (
+              <p className="hint organize-queue-note">{data.people.length ? empty : '添加联系人后，可在这里补齐分类。'}</p>
+            ) : (
+              <>
+                <ul className="organize-queue-list">
+                  {people.slice(0, 10).map((person) => (
+                    <li className="organize-queue-row" key={person.id}>
+                      <Link to={`/person/${person.id}`}>{person.name}</Link>
+                      <QuickSelect label={label} options={options} onSelect={(name) => {
+                        if (assign(person.id, name)) toast.showAfterFileSave(message(person.name, name))
+                        else toast.show('保存失败，请重试')
+                      }} />
+                    </li>
+                  ))}
+                </ul>
+                {people.length > 10 && <p className="hint organize-queue-note">另有 {people.length - 10} 位联系人。</p>}
+              </>
+            )}
+          </section>
+        ))}
+      </div>
 
       <Modal
         open={editor !== null}
@@ -251,17 +324,25 @@ export function CategoriesPage() {
             id="category-name"
             type="text"
             value={editor?.value ?? ''}
-            onChange={(e) => setEditor((current) => current ? { ...current, value: e.target.value } : current)}
-            onKeyDown={(e) => { if (e.key === 'Enter') saveEditor() }}
+            aria-invalid={Boolean(fieldError)}
+            aria-describedby={fieldError ? 'category-name-error' : undefined}
+            onChange={(event) => {
+              const value = event.target.value
+              setEditor((current) => current ? { ...current, value } : current)
+              setFieldError('')
+            }}
+            onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) saveEditor() }}
             autoFocus
           />
+          {fieldError && <p className="field-error" id="category-name-error" role="alert">{fieldError}</p>}
         </div>
       </Modal>
 
       <ConfirmDialog
         open={removing !== null}
         title={`删除${removing?.kind === 'circle' ? '圈子' : removing?.kind === 'tag' ? '标签' : '分组'}`}
-        message={removing ? `删除「${removing.label}」不会删除人物本身。` : ''}
+        message={removalMessage}
+        warning="此操作无法撤销。"
         confirmLabel="删除"
         destructive
         onClose={() => setRemoving(null)}

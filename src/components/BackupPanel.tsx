@@ -92,7 +92,7 @@ export function BackupPanel({ setup = false }: { setup?: boolean }) {
         )}
         <div className="settings-data-row">
           <div className="settings-data-copy">
-            <h3>从备份恢复</h3>
+            {setup ? <h2>从备份恢复</h2> : <h3>从备份恢复</h3>}
             <p className="hint">先校验结构与版本，确认后覆盖当前数据。</p>
           </div>
           <div className="settings-data-actions">

@@ -1,0 +1,623 @@
+/*
+ * [INPUT]: 使用设计 Token 与关系网组件的类名。
+ * [OUTPUT]: 配置关系网的查找工具、SVG 画布、图例和选中档案。
+ * [POS]: 关系网页使用此样式。图例随画布宽度换行。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+
+.ng-page-header .page-count {
+  margin-top: var(--sp-2);
+  color: var(--text-secondary);
+}
+
+.ng-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.ng-modes {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+}
+
+.ng-modes button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding-inline: 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.ng-modes button:hover {
+  color: var(--text-heading);
+}
+
+.ng-modes button[aria-pressed="true"] {
+  border-color: var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--color-action-active);
+  font-weight: var(--fw-semibold);
+}
+
+.ng-lookup {
+  position: relative;
+  width: min(100%, 300px);
+}
+
+.ng-lookup .ng-search {
+  min-height: 44px;
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.ng-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.ng-clear-search, .ng-close-focus {
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.ng-clear-search:hover, .ng-close-focus:hover {
+  background: var(--bg-subtle);
+  color: var(--text-heading);
+}
+
+.ng-results {
+  position: absolute;
+  z-index: 5;
+  inset: calc(100% + 5px) 0 auto;
+  padding: var(--sp-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-2);
+}
+
+.ng-results > p {
+  padding: var(--sp-3);
+}
+
+.ng-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.ng-result:hover, .ng-result:focus-visible {
+  background: var(--color-action-wash);
+  color: var(--color-action-active);
+}
+
+.ng-result .avatar {
+  width: 30px;
+  height: 30px;
+  font-size: var(--fs-caption);
+}
+
+.ng-result > span:not(.avatar) {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ng-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 228px;
+  align-items: start;
+  gap: var(--sp-4);
+}
+
+.ng-shell, .ng-empty {
+  --map-grid: color-mix(in srgb, var(--color-primary-200) 64%, transparent);
+  --map-tint: color-mix(in srgb, var(--color-primary-100) 45%, var(--bg-surface));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle, var(--map-grid) 0.8px, transparent 0.9px) center / 18px 18px,
+    radial-gradient(ellipse at center, var(--map-tint), var(--bg-surface) 78%);
+}
+
+.ng-shell {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ng-canvas {
+  display: block;
+  width: 100%;
+  height: clamp(388px, 61svh, 660px);
+  touch-action: none;
+  overscroll-behavior: contain;
+  cursor: grab;
+}
+
+.ng-canvas:active {
+  cursor: grabbing;
+}
+
+.ng-shell:fullscreen {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+.ng-shell:fullscreen .ng-canvas {
+  height: 100%;
+}
+
+.ng-orbits, .ng-self, .ng-cluster-label, .ng-cluster-wedge {
+  pointer-events: none;
+}
+
+.ng-orbits {
+  fill: none;
+  stroke: var(--color-primary-200);
+  opacity: .72;
+  stroke-width: 1;
+}
+
+.ng-orbits path {
+  stroke-dasharray: 3 7;
+}
+
+.ng-cluster-wedge {
+  stroke-opacity: .24;
+  stroke-width: 1;
+}
+
+.ng-cluster-label, .ng-person-label, .ng-self-label {
+  paint-order: stroke;
+  stroke: var(--bg-surface);
+  stroke-linejoin: round;
+}
+
+.ng-cluster-label {
+  stroke-width: 5px;
+  font-size: 19px;
+  font-weight: var(--fw-semibold);
+}
+
+.ng-cluster-dim {
+  opacity: .40;
+}
+
+.ng-person {
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ng-person-hit {
+  fill: transparent;
+}
+
+.ng-person-halo {
+  opacity: .13;
+  pointer-events: none;
+}
+
+.ng-person-dot {
+  fill: var(--bg-surface);
+  stroke-width: 2.4;
+  pointer-events: none;
+}
+
+.ng-person-label {
+  visibility: hidden;
+  fill: var(--text-primary);
+  stroke-width: 4px;
+  font-size: 18px;
+  pointer-events: none;
+}
+
+.ng-person-named .ng-person-label,
+.ng-person:is(:hover, :focus-visible, [aria-pressed="true"]) .ng-person-label {
+  visibility: visible;
+}
+
+.ng-person:is(:hover, :focus-visible, [aria-pressed="true"]) .ng-person-halo {
+  opacity: .31;
+}
+
+.ng-person:is(:hover, :focus-visible) .ng-person-dot {
+  fill: var(--color-primary-100);
+  stroke-width: 3.3;
+}
+
+.ng-person[aria-pressed="true"] .ng-person-dot {
+  fill: var(--color-action);
+  stroke: var(--bg-surface);
+  stroke-width: 2;
+}
+
+.ng-person:is(:focus-visible, [aria-pressed="true"]) .ng-person-label {
+  fill: var(--color-action-active);
+  font-weight: var(--fw-semibold);
+}
+
+.ng-dim:not(:hover, :focus-visible) {
+  opacity: .45;
+}
+
+.ng-self-ring {
+  fill: var(--color-primary-100);
+  fill-opacity: .53;
+  stroke: var(--color-primary-200);
+  stroke-dasharray: 2 6;
+  stroke-width: 1.2;
+}
+
+.ng-self-core {
+  fill: var(--color-action);
+  stroke: var(--bg-surface);
+  stroke-width: 4;
+}
+
+.ng-self-initial {
+  fill: var(--bg-surface);
+  font-size: 28px;
+  font-weight: var(--fw-semibold);
+}
+
+.ng-self-label {
+  fill: var(--color-action-active);
+  stroke-width: 4;
+  font-size: 18px;
+  font-weight: var(--fw-semibold);
+}
+
+.ng-controls {
+  position: absolute;
+  inset: var(--sp-4) var(--sp-4) auto auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.ng-control-pair {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.ng-control {
+  display: grid;
+  place-items: center;
+  width: 41px;
+  height: 41px;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.ng-control + .ng-control {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ng-control:hover {
+  background: var(--color-action-wash);
+  color: var(--color-action-active);
+}
+
+.ng-map-key {
+  position: absolute;
+  inset: auto auto var(--sp-4) var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 5px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.ng-map-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ng-map-key i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ng-key-self {
+  background: var(--color-action);
+}
+
+.ng-key-person {
+  border: 1.4px solid var(--color-action);
+}
+
+.ng-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.ng-clusters, .ng-details {
+  padding: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.ng-clusters h2, .ng-details h2 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+}
+
+.ng-clusters ul {
+  max-height: 360px;
+  margin: var(--sp-3) -6px 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ng-clusters li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding-inline: 6px;
+  color: var(--text-primary);
+  font-size: var(--fs-label);
+}
+
+.ng-clusters li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ng-clusters li i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.ng-clusters li span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ng-clusters li span:last-child {
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+.ng-clusters li.ng-cluster-active {
+  border-radius: var(--radius-xs);
+  background: var(--color-action-wash);
+  color: var(--color-action-active);
+}
+
+.ng-details-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ng-details-head h2 {
+  overflow-wrap: anywhere;
+}
+
+.ng-details-head .avatar {
+  width: 39px;
+  height: 39px;
+  font-size: var(--fs-label);
+}
+
+.ng-details dl {
+  display: grid;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0;
+  font-size: var(--fs-caption);
+}
+
+.ng-details dl > div {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: var(--sp-2);
+}
+
+.ng-details dt {
+  color: var(--text-secondary);
+}
+
+.ng-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
+.ng-details-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-height: 36px;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-action-wash);
+  color: var(--color-action-active);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-medium);
+}
+
+.ng-details-link:hover {
+  background: var(--color-primary-100);
+}
+
+.ng-instructions {
+  margin: 0 var(--sp-1);
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+}
+
+.ng-empty {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--sp-2);
+  min-height: clamp(330px, 50svh, 525px);
+  padding: var(--sp-5);
+  text-align: center;
+}
+
+.ng-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: var(--sp-2);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  background: var(--color-action-wash);
+  color: var(--color-action);
+}
+
+.ng-empty h2 {
+  color: var(--text-heading);
+  font-size: var(--fs-h2);
+}
+
+.ng-empty p {
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+}
+
+.ng-empty .btn {
+  margin-top: var(--sp-2);
+}
+
+@media (max-width: 1200px) {
+  .ng-workbench {
+    grid-template-columns: minmax(0, 1fr) 184px;
+  }
+}
+
+@media (max-width: 920px) {
+  .ng-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ng-aside {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .ng-aside:not(:has(.ng-details)) .ng-clusters, .ng-instructions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .ng-toolbar {
+    gap: var(--sp-2);
+  }
+
+  .ng-modes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .ng-modes button {
+    min-height: 39px;
+    padding-inline: var(--sp-1);
+  }
+
+  .ng-lookup {
+    width: 100%;
+  }
+
+  .ng-canvas {
+    height: clamp(310px, 49svh, 440px);
+  }
+
+  .ng-controls {
+    inset: var(--sp-2) var(--sp-2) auto auto;
+    flex-direction: row;
+  }
+
+  .ng-control-pair {
+    flex-direction: row;
+  }
+
+  .ng-control + .ng-control {
+    border-top: 0;
+    border-left: 1px solid var(--border-subtle);
+  }
+
+  .ng-control {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ng-map-key {
+    inset: auto auto var(--sp-2) var(--sp-2);
+  }
+
+  .ng-aside {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .ng-cluster-label, .ng-person-label, .ng-self-label {
+    font-size: 22px;
+  }
+}

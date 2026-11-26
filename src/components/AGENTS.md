@@ -7,11 +7,11 @@
 - `CircleEditor.tsx` 编辑圈子名称与分组成员。
 - `EmptyState.tsx` 展示空状态与下一步操作。
 - `FacetFilters.tsx` 渲染多选分类筛选。
-- `Layout.tsx` 装配导航、路由内容与保存状态。
-- `Logo.tsx` 绘制产品标志。
+- `Layout.tsx` 装配响应式导航、路由内容与保存状态。
+- `Logo.tsx` 加载导航与欢迎页共用的品牌图标。
 - `Modal.tsx` 提供对话框、焦点管理与操作确认。
-- `NetworkGraph.tsx` 渲染关系网及点选、拖动与缩放。
-- `PersonCard.tsx` 展示联系人摘要及头像。
+- `NetworkGraph.tsx` 渲染关系网画布、联系人节点、图例和缩放控件。
+- `PersonCard.tsx` 提供联系人目录行与共用头像。
 - `QuickSelect.tsx` 提供可搜索的快速选择。
 - `RelationshipBadge.tsx` 展示联系人重要标记。
 - `Toast.tsx` 提供短时反馈，保存成功提示等待文件写入。

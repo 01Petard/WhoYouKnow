@@ -91,27 +91,27 @@ Notes:
 
 ## Core model
 
-- **Who you are**: on first launch you create “My profile”, or migrate an existing contact into it. The current user is stored separately and never appears in the people directory.
+- **Who you are**: on first launch you create “My profile”, migrate an existing contact, or restore a JSON backup. The current user is stored separately and never appears in the people directory.
 - **Everyone is connected**: every contact is assumed to know you. The old “known / unknown” distinction is gone; the People page is the complete contact directory.
 - **Network map**: a map centered on you, clustered by group, circle or tag. The system does not store relationships between contacts.
-- **Organization**: tags, groups and circles are three separate management pages, each with manual ordering. Group and circle order drives the network map.
+- **Organization**: the Categories page provides separate views and manual ordering for tags, groups and circles. Group and circle order drives the network map.
 
 ## Features
 
 | Area | Capability |
 | --- | --- |
-| People | All contacts, A-Z pinyin grouping, grid cards, name search |
-| Filters | Inline group / circle / tag selects; apply immediately, no modal |
+| People | Contact directory, A–Z pinyin grouping, name and note search |
+| Filters | An expandable panel for groups, circles and tags with immediate results |
 | Person | Add, edit, mark important, delete |
 | Network | You-centered map; group/circle/tag switch; zoom, pan, locate, focus |
-| Organization | One “Categories” page with tags, groups and circles in three columns; button ordering and drag-and-drop |
+| Organization | One “Categories” page with tags, groups and circles in three views; button ordering and drag-and-drop |
 | Data | People CSV, full JSON backup; same-name incremental import |
 
 ### People page
 
 - Grouped by the first pinyin letter (A-Z); digits, Latin letters and special characters go to a trailing `#` group.
-- Grid layout: multiple columns on desktop, two on mobile. Cards show group/tag summaries and the important star.
-- A multi-row facet panel filters immediately: one row per dimension (group / circle / tag), with multi-select inside a dimension (OR) and AND across dimensions. Each row has “Unclassified” for people with no value in that dimension; “Clear all” resets everything.
+- Directory rows show names, the important star, groups, and the last contact date. Desktop layouts place follow-up and group shortcuts beside the directory, with the follow-up summary above the list on small screens.
+- A multi-row facet panel filters immediately: open it from Filters to see one row per dimension (group / circle / tag), with multi-select inside a dimension (OR) and AND across dimensions. Each row has “Unclassified” for people with no value in that dimension; “Clear all” clears the category selections.
 - The people directory contains contacts only; the current user lives in “My profile”.
 
 ### Network map
@@ -125,7 +125,7 @@ Notes:
 
 - These are three independent pages in the main navigation, no longer nested under a “Me” page.
 - **Profile** (`/profile`): the current user’s details, groups/circles and a relationship overview.
-- **Categories** (`/categories`): tags, groups and circles in three columns; each item supports up/down buttons and drag-and-drop; groups and circles open their detail pages.
+- **Categories** (`/categories`): tags, groups and circles in three views; each item supports up/down buttons and drag-and-drop; groups and circles open their detail pages.
 - **Settings** (`/settings`): project data-file status, JSON full backup/restore, CSV contact import/export. Changes go to the active data file when available (default `data/linkmap.json`). You can also restore a JSON backup directly from setup.
 
 ### Data
@@ -143,7 +143,7 @@ Notes:
 
 `/people` (default), `/person/new`, `/person/:id`, `/person/:id/edit`, `/network`, `/profile`, `/profile/edit`, `/categories`, `/categories/groups?name=…`, `/categories/circles/:id`, `/settings`.
 
-Responsive: five-item bottom tab bar below 1024px; sidebar navigation at 1024px and above. Content max-width is 1280px with tighter desktop gutters.
+Responsive: five-item bottom tab bar below 1024px; sidebar navigation at 1024px and above. Content max-width is 1460px with responsive side padding.
 
 ## Known limitations
 

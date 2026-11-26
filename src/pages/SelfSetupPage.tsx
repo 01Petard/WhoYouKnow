@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 react 的 useMemo/useState；依赖 lucide-react 的 Check/Search；依赖 ../components 的 Avatar/Alert/BackupPanel/useToast；依赖 ../store/useStore 的 data/adoptAsMe/createMe；依赖 ../util/constants 的 COPY
- * [OUTPUT]: 导出 SelfSetupPage 组件
- * [POS]: 未创建「我的信息」时的唯一入口；可把已有联系人迁移成我，或直接创建我的资料，也可从完整备份迁移，恢复成功后进入主路由
+ * [INPUT]: 依赖全局资料、身份创建与迁移操作、备份面板和品牌标记。
+ * [OUTPUT]: 导出 SelfSetupPage 组件。
+ * [POS]: 未创建我的信息时的入口；创建、采用联系人和备份恢复在同一页面完成。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
-import { Check, Search } from 'lucide-react'
+import { ArrowRight, Check, Search } from 'lucide-react'
 import { Alert } from '../components/Alert'
 import { BackupPanel } from '../components/BackupPanel'
 import { Avatar } from '../components/PersonCard'
@@ -15,9 +15,9 @@ import { useStore } from '../store/useStore'
 import { COPY } from '../util/constants'
 
 export function SelfSetupPage() {
-  const data = useStore((s) => s.data)
-  const createMe = useStore((s) => s.createMe)
-  const adoptAsMe = useStore((s) => s.adoptAsMe)
+  const people = useStore((state) => state.data.people)
+  const createMe = useStore((state) => state.createMe)
+  const adoptAsMe = useStore((state) => state.adoptAsMe)
   const toast = useToast()
   const saving = useStore((state) => state.storageSaving)
   const storageNotice = useStore((state) => state.storageNotice)
@@ -27,103 +27,101 @@ export function SelfSetupPage() {
   const [name, setName] = useState('')
 
   const candidates = useMemo(
-    () => data.people.filter((p) => p.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())),
-    [data.people, search],
+    () => people.filter((person) => person.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())),
+    [people, search],
   )
 
-  const start = () => {
-    if (!selected) return
-    if (!adoptAsMe(selected)) {
-      toast.show('设置失败，请重试')
-    }
-  }
+  const selectedPerson = people.find((person) => person.id === selected)
+  const hasPeople = people.length > 0
 
-  const create = () => {
-    const clean = name.trim()
-    if (!clean || saving) return
-    if (!createMe({ name: clean })) {
-      toast.show('保存失败，请重试')
-    }
+  const start = () => {
+    if (!selectedPerson || saving) return
+    if (!adoptAsMe(selectedPerson.id)) toast.show('设置失败，请重试')
   }
 
   return (
-    <div className="self-setup">
-      <div className="self-setup-card">
-        <div className="brand" style={{ marginBottom: 'var(--sp-4)' }}>
-          <span className="brand-mark"><Logo size={32} /></span>
-          <span className="brand-copy">
+    <main className="welcome-page">
+      <div className="welcome-layout">
+        <div className="welcome-content">
+          <div className="welcome-brand">
+            <Logo size={36} />
             <span className="brand-name">WhoYouKnow</span>
-            <span className="brand-tagline">你的人脉 · Every connection counts.</span>
-          </span>
-        </div>
-        <h1 className="page-title" style={{ marginBottom: 'var(--sp-2)' }}>{COPY.selfSetupTitle}</h1>
-        <p className="hint" style={{ marginBottom: 'var(--sp-4)' }}>
-          {COPY.selfSetupHint} 已有联系人会被移出人脉，单独成为你的资料。
-        </p>
+          </div>
 
-        {data.people.length > 0 && (
-          <>
-            <div className="search-field" style={{ marginBottom: 'var(--sp-3)' }}>
-              <Search size={18} aria-hidden="true" />
+          <header className="welcome-heading">
+            <h1>{hasPeople ? COPY.selfSetupTitle : '创建你的通讯录'}</h1>
+            <p>你的资料会成为关系网的起点。</p>
+          </header>
+
+          {storageNotice && <Alert tone={storageError ? 'danger' : 'info'}>{storageNotice}</Alert>}
+
+          {hasPeople && (
+            <section className="welcome-adopt" aria-labelledby="welcome-adopt-heading">
+              <h2 id="welcome-adopt-heading">从已有联系人中选择</h2>
+              <p className="hint">选中的联系人会移出人脉，成为你的资料。</p>
+              <div className="search-field">
+                <Search size={18} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="搜索已有联系人"
+                  aria-label="搜索已有联系人"
+                />
+              </div>
+              <div className="self-option-list" role="radiogroup" aria-label="选择你自己">
+                {candidates.map((person) => (
+                  <label className={`self-option welcome-option${selected === person.id ? ' self-option-selected' : ''}`} key={person.id}>
+                    <input
+                      type="radio"
+                      name="welcome-self"
+                      className="sr-only"
+                      checked={selected === person.id}
+                      onChange={() => setSelected(person.id)}
+                    />
+                    <Avatar person={person} small />
+                    <span className="self-option-body">
+                      <span className="self-option-title">{person.name}</span>
+                      {person.channel && <span className="hint">{person.channel}</span>}
+                    </span>
+                    {selected === person.id && <Check size={18} className="self-option-check" aria-hidden="true" />}
+                  </label>
+                ))}
+                {candidates.length === 0 && <p className="hint">没有匹配的联系人</p>}
+              </div>
+              <button type="button" className="btn btn-primary btn-block" disabled={!selectedPerson || saving} onClick={start}>
+                {selectedPerson ? `以「${selectedPerson.name}」的身份开始` : '确认选择'}
+              </button>
+            </section>
+          )}
+
+          <form className="welcome-create" onSubmit={(event) => {
+            event.preventDefault()
+            const clean = name.trim()
+            if (clean && !saving && !createMe({ name: clean })) toast.show('创建失败，请重试')
+          }}>
+            <div className="field">
+              <label className="field-label" htmlFor="self-name">{COPY.selfSetupName}</label>
               <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索已有联系人"
-                aria-label="搜索已有联系人"
+                id="self-name"
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="例如 张三"
               />
             </div>
-            <div className="self-option-list" role="radiogroup" aria-label="选择你自己">
-              {candidates.map((person) => (
-                <button
-                  key={person.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected === person.id}
-                  className={`self-option${selected === person.id ? ' self-option-selected' : ''}`}
-                  onClick={() => setSelected(person.id)}
-                >
-                  <Avatar person={person} small />
-                  <span className="self-option-body">
-                    <span className="self-option-title">{person.name}</span>
-                    {person.channel && <span className="hint">{person.channel}</span>}
-                  </span>
-                  {selected === person.id && <Check size={18} className="self-option-check" aria-hidden="true" />}
-                </button>
-              ))}
-              {candidates.length === 0 && <p className="hint">没有匹配的联系人</p>}
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              style={{ marginTop: 'var(--sp-3)' }}
-              disabled={!selected || saving}
-              onClick={start}
-            >
-              {selected ? `以「${data.people.find((p) => p.id === selected)?.name ?? ''}」的身份开始` : '请选择或创建你自己'}
+            <button type="submit" className={`btn ${hasPeople ? 'btn-secondary' : 'btn-primary'} btn-block`} disabled={!name.trim() || saving}>
+              创建我的信息 <ArrowRight size={17} aria-hidden="true" />
             </button>
-            <div className="split-line" />
-          </>
-        )}
+          </form>
 
-        <div className="field">
-          <label className="field-label" htmlFor="self-name">{COPY.selfSetupName}</label>
-          <input
-            id="self-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="例如：张三"
-            onKeyDown={(e) => { if (e.key === 'Enter') create() }}
-          />
+          <div className="welcome-restore">
+            <BackupPanel setup />
+          </div>
         </div>
-        <button type="button" className="btn btn-secondary btn-block" disabled={!name.trim() || saving} onClick={create}>
-          创建我的信息
-        </button>
-        <div className="split-line" />
-        {storageNotice && <Alert tone={storageError ? 'danger' : 'info'}>{storageNotice}</Alert>}
-        <BackupPanel setup />
+        <div aria-hidden="true" className="welcome-art" />
       </div>
-    </div>
+    </main>
   )
 }

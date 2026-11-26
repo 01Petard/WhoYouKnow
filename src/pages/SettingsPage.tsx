@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 react 的 useEffect/useState；依赖 lucide-react 的 FileJson/RefreshCw/Save；依赖 ../components 的 useToast；依赖 ../store/useStore 的 storageKind/storageSaving/storageSaveNow/storageReload；依赖 ../util/storage 的 DATA_FILE_PATH；依赖 ./DataPanel
+ * [INPUT]: 依赖 react 的 useEffect/useState；依赖 lucide-react 的 Database/RefreshCw/Save；依赖 ../components 的 useToast；依赖 ../store/useStore 的 storageKind/storageSaving/storageSaveNow/storageReload；依赖 ../util/storage 的 DATA_FILE_PATH；依赖 ./DataPanel
  * [OUTPUT]: 导出 SettingsPage 组件
- * [POS]: 「系统设置」页面；顶部数据文件状态卡 + JSON/CSV 文件导入导出；路由 /settings
+ * [POS]: 展示数据文件路径和状态。文件操作独立于 JSON 备份和 CSV 导入导出。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useState } from 'react'
-import { FileJson, RefreshCw, Save } from 'lucide-react'
+import { Database, RefreshCw, Save } from 'lucide-react'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store/useStore'
 import { DATA_FILE_PATH } from '../util/storage'
@@ -46,28 +46,26 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="content">
-      <div className="page-header">
+    <div className="content settings-page">
+      <header className="page-header organize-heading">
         <h1 className="page-title">系统设置</h1>
-        <span className="page-count">数据与文件</span>
-      </div>
+      </header>
 
-      <section className="settings-hero">
-        <div className="settings-hero-icon"><FileJson size={24} aria-hidden="true" /></div>
-        <div className="settings-hero-body">
-          <div className="settings-hero-title">
-            <h2>数据文件</h2>
-            <code className="settings-path">{dataFile}</code>
-          </div>
-          <p className="hint">所有改动会自动写入这个文件；使用 JSON / CSV 文件进行备份与迁移。</p>
-
-        </div>
-        <div className="settings-hero-side">
-          <span className={`settings-status${storageKind === 'file' ? ' settings-status-active' : ''}`}>
-            <i className="settings-dot" aria-hidden="true" />
+      <section className="card storage-panel" aria-labelledby="storage-heading">
+        <header className="storage-panel-header">
+          <span className="organize-section-icon"><Database size={20} strokeWidth={1.7} aria-hidden="true" /></span>
+          <h2 className="section-title" id="storage-heading">数据文件</h2>
+          <span className={`storage-panel-status${storageKind === 'file' && !storageSaving ? ' storage-panel-status-active' : ''}`}>
+            <span className="storage-panel-dot" aria-hidden="true" />
             {storageSaving ? '保存中' : storageKind === 'file' ? '项目文件' : '浏览器回退'}
           </span>
-          <div className="row-actions">
+        </header>
+        <div className="storage-panel-body">
+          <dl className="storage-panel-location">
+            <dt className="hint">文件位置</dt>
+            <dd><code>{dataFile}</code></dd>
+          </dl>
+          <div className="row-actions storage-panel-actions">
             <button type="button" className="btn btn-secondary btn-sm" onClick={reload} disabled={busy || storageSaving}>
               <RefreshCw size={15} aria-hidden="true" /> 重新读取
             </button>
