@@ -6,7 +6,7 @@
 - `CircleDetailPage.tsx` 展示圈子成员及其分组来源。
 - `DataPanel.tsx` 装配备份面板和联系人 CSV 流程。
 - `GroupPage.tsx` 按分组浏览并调整成员。
-- `NetworkPage.tsx` 切换图谱分类、搜索定位和显示联系人详情。
+- `NetworkPage.tsx` 切换图谱分类、搜索定位，并提供选中联系人的完整资料。
 - `PeoplePage.tsx` 提供联系人目录、多选筛选、待联系概览与分组入口。
 - `PersonDetailPage.tsx` 展示联系人档案、分类和联系日期入口。
 - `PersonFormPage.tsx` 通过分区表单新建或编辑联系人和我的资料。

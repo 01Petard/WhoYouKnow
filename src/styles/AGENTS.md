@@ -7,7 +7,7 @@
 - `base.css` 提供按钮、字段、空态、弹窗和提示样式。
 - `shell.css` 定义桌面侧栏和移动端导航。
 - `directory.css` 定义联系人目录、筛选和概览。
-- `network.css` 定义关系网画布、控件和图例。
+- `network.css` 定义普通和全屏关系网的画布、控件、图例和联系人资料位置。
 - `person-pages.css` 定义档案、录入表单和欢迎页。
 - `organize.css` 定义分类、成员和数据设置页。
 

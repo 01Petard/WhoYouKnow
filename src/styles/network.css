@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 使用设计 Token 与关系网组件的类名。
  * [OUTPUT]: 配置关系网的查找工具、SVG 画布、图例和选中档案。
- * [POS]: 关系网页使用此样式。图例随画布宽度换行。
+ * [POS]: 关系网页使用此样式。宽屏并排显示画布和图例，窄屏将图例放在画布上方。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 
@@ -139,8 +139,16 @@
 .ng-workbench {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 228px;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "map legend" "map info";
   align-items: start;
   gap: var(--sp-4);
+}
+
+@media (min-width: 921px) {
+  .ng-workbench:has(.ng-details) {
+    grid-template-areas: "map info" "map legend";
+  }
 }
 
 .ng-shell, .ng-empty {
@@ -154,6 +162,7 @@
 }
 
 .ng-shell {
+  grid-area: map;
   position: relative;
   min-width: 0;
   overflow: hidden;
@@ -172,14 +181,20 @@
   cursor: grabbing;
 }
 
-.ng-shell:fullscreen {
+.ng-workbench:fullscreen {
   width: 100%;
   height: 100%;
-  border: 0;
-  border-radius: 0;
+  padding: var(--sp-3);
+  overflow: auto;
+  background: var(--bg-page);
 }
 
-.ng-shell:fullscreen .ng-canvas {
+.ng-workbench:fullscreen .ng-shell {
+  min-height: 200px;
+  align-self: stretch;
+}
+
+.ng-workbench:fullscreen .ng-canvas {
   height: 100%;
 }
 
@@ -249,6 +264,7 @@
 }
 
 .ng-person-named .ng-person-label,
+.ng-workbench:fullscreen .ng-person-label,
 .ng-person:is(:hover, :focus-visible, [aria-pressed="true"]) .ng-person-label {
   visibility: visible;
 }
@@ -377,9 +393,16 @@
 }
 
 .ng-aside {
+  grid-area: info;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+}
+
+.ng-clusters {
+  grid-area: legend;
+  min-width: 0;
 }
 
 .ng-clusters, .ng-details {
@@ -442,6 +465,16 @@
   color: var(--color-action-active);
 }
 
+.ng-workbench:fullscreen .ng-person:not(.ng-person-named) .ng-person-label {
+  font-size: 14px;
+  stroke-width: 3px;
+}
+
+.ng-workbench:fullscreen .ng-details {
+  max-height: 52dvh;
+  overflow: auto;
+}
+
 .ng-details-head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -468,7 +501,7 @@
 
 .ng-details dl > div {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-columns: 4em minmax(0, 1fr);
   gap: var(--sp-2);
 }
 
@@ -480,6 +513,10 @@
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--text-primary);
+}
+
+.ng-details-note {
+  white-space: pre-wrap;
 }
 
 .ng-details-link {
@@ -552,16 +589,43 @@
 @media (max-width: 920px) {
   .ng-workbench {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas: "legend" "map" "info";
+    gap: var(--sp-3);
   }
 
-  .ng-aside {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+  .ng-workbench:fullscreen {
+    grid-template-rows: auto minmax(200px, 1fr) auto;
   }
 
-  .ng-aside:not(:has(.ng-details)) .ng-clusters, .ng-instructions {
-    grid-column: 1 / -1;
+  .ng-workbench:fullscreen:has(.ng-details) .ng-aside {
+    grid-area: map;
+    justify-self: end;
+    z-index: 1;
+    width: min(300px, 76%);
+    margin: var(--sp-3) 68px 0 0;
+    box-shadow: var(--shadow-2);
+    border-radius: var(--radius-md);
+  }
+
+  .ng-clusters {
+    padding: var(--sp-2) var(--sp-3);
+  }
+
+  .ng-clusters ul {
+    display: flex;
+    gap: var(--sp-2);
+    max-height: none;
+    margin: var(--sp-1) 0 0;
+    overflow-x: auto;
+  }
+
+  .ng-clusters li {
+    flex: none;
+    grid-template-columns: auto auto auto;
+    min-height: 30px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xs);
   }
 }
 
@@ -615,6 +679,10 @@
   .ng-aside {
     display: flex;
     align-items: stretch;
+  }
+
+  .ng-workbench:fullscreen:has(.ng-details) .ng-aside {
+    margin: 64px var(--sp-2) 0 0;
   }
 
   .ng-cluster-label, .ng-person-label, .ng-self-label {

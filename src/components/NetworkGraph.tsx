@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React、联系人分类数据和浏览器的指针及全屏接口。
  * [OUTPUT]: 导出 NetworkGraph 画布及其图例。
- * [POS]: 按归类方式布置联系人节点。画布支持平移、缩放和姓名定位。
+ * [POS]: 按归类方式布置联系人节点。按分组时标注每个扇区。全屏显示联系人姓名。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
@@ -171,7 +171,7 @@ function wedgePath(cluster: Cluster): string {
 export function NetworkGraph({
   people, me, groups, circles, tags, clusterBy, focusId, locateRequest, details, onFocus,
 }: NetworkGraphProps) {
-  const shellRef = useRef<HTMLDivElement>(null)
+  const workbenchRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const viewportRef = useRef<SVGGElement>(null)
   const pointers = useRef(new Map<number, Position>())
@@ -192,12 +192,14 @@ export function NetworkGraph({
       ? clusters.filter((cluster) => cluster.members.some((member) => member.person.id === focusId)).map((cluster) => cluster.key)
       : [],
   )
+  const showClusterLabels = clusterBy === 'group' || clusters.length <= 8
   const showNames = clusters.reduce((count, cluster) => count + cluster.members.length, 0) <= 22
 
   const setView = useCallback((next: typeof DEFAULT_VIEW) => {
     // 连续指针事件只更新 SVG 变换，分类和节点保持不动。
     view.current = next
-    viewportRef.current?.setAttribute('transform', `translate(${next.x} ${next.y}) scale(${next.k})`)
+    const viewport = viewportRef.current
+    viewport?.setAttribute('transform', `translate(${next.x} ${next.y}) scale(${next.k})`)
   }, [])
 
   const toViewBox = useCallback((clientX: number, clientY: number) => {
@@ -217,7 +219,7 @@ export function NetworkGraph({
   }, [setView])
 
   useEffect(() => {
-    const onChange = () => setIsFullscreen(document.fullscreenElement === shellRef.current)
+    const onChange = () => setIsFullscreen(document.fullscreenElement === workbenchRef.current)
     document.addEventListener('fullscreenchange', onChange)
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
@@ -243,9 +245,9 @@ export function NetworkGraph({
   }, [clusters, locateRequest, positions, setView])
 
   const toggleFullscreen = () => {
-    const shell = shellRef.current
-    if (!shell || !document.fullscreenEnabled) return
-    const action = document.fullscreenElement === shell ? document.exitFullscreen() : shell.requestFullscreen()
+    const workbench = workbenchRef.current
+    if (!workbench || !document.fullscreenEnabled) return
+    const action = document.fullscreenElement === workbench ? document.exitFullscreen() : workbench.requestFullscreen()
     void action.catch(() => undefined)
   }
 
@@ -309,8 +311,21 @@ export function NetworkGraph({
   }
 
   return (
-    <div className="ng-workbench">
-      <div className="ng-shell" ref={shellRef}>
+    <div className="ng-workbench" ref={workbenchRef}>
+      <section className="ng-clusters" aria-label={`${MODES[clusterBy]}图例`}>
+        <h2>{MODES[clusterBy]}图例</h2>
+        <ul tabIndex={0}>
+          {clusters.map((cluster) => (
+            <li key={cluster.key} className={focusClusterKeys.has(cluster.key) ? 'ng-cluster-active' : undefined}>
+              <i style={{ backgroundColor: cluster.color }} aria-hidden="true" />
+              <span title={cluster.label}>{cluster.label}</span>
+              <span className="tabular" aria-label={`${cluster.members.length} 位联系人`}>{cluster.members.length}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <div className="ng-shell">
         <svg
           ref={svgRef}
           className="ng-canvas ng-map"
@@ -349,7 +364,7 @@ export function NetworkGraph({
                     className="ng-cluster-wedge"
                     aria-hidden="true"
                   />
-                  {clusters.length <= 8 && (
+                  {showClusterLabels && (
                     <text
                       x={CENTER + Math.cos(angle) * radius}
                       y={CENTER + Math.sin(angle) * radius}
@@ -451,19 +466,7 @@ export function NetworkGraph({
 
       <aside className="ng-aside" aria-label="图谱信息">
         {details}
-        <section className="ng-clusters" aria-label={`${MODES[clusterBy]}图例`}>
-          <h2>{MODES[clusterBy]}图例</h2>
-          <ul>
-            {clusters.map((cluster) => (
-              <li key={cluster.key} className={focusClusterKeys.has(cluster.key) ? 'ng-cluster-active' : undefined}>
-                <i style={{ backgroundColor: cluster.color }} aria-hidden="true" />
-                <span title={cluster.label}>{cluster.label}</span>
-                <span className="tabular" aria-label={`${cluster.members.length} 位联系人`}>{cluster.members.length}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <p className="ng-instructions">点选联系人查看资料，拖动空白处移动地图。</p>
+        {!details && <p className="ng-instructions">点选联系人查看资料，拖动空白处移动地图。</p>}
       </aside>
     </div>
   )

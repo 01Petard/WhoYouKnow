@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React、路由、联系人查询和 NetworkGraph 的画布与图例。
  * [OUTPUT]: 导出 NetworkPage。
- * [POS]: 在关系网页选择归类方式、定位联系人和查看选中档案。
+ * [POS]: 在关系网页切换分类。将选中的联系人资料交给画布侧栏。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useId, useMemo, useState } from 'react'
@@ -147,7 +147,7 @@ export function NetworkPage() {
             locateRequest={locateRequest}
             onFocus={focusNode}
             details={focus && (
-              <section className="ng-details" aria-label="当前选中的联系人">
+              <section className="ng-details" aria-label="当前选中的联系人" tabIndex={0}>
                 <div className="ng-details-head">
                   <Avatar person={focus} />
                   <h2>{focus.name}</h2>
@@ -161,9 +161,16 @@ export function NetworkPage() {
                   </button>
                 </div>
                 <dl>
+                  <div><dt>认识渠道</dt><dd>{focus.channel || '未填写'}</dd></div>
+                  <div><dt>认识时间</dt><dd>{focus.metAt || '未填写'}</dd></div>
+                  <div><dt>生日</dt><dd>{focus.birthday || '未填写'}</dd></div>
+                  <div><dt>性别</dt><dd>{focus.gender || '未填写'}</dd></div>
+                  <div><dt>上次联系</dt><dd>{focus.lastContactAt || '未记录'}</dd></div>
+                  <div><dt>重要标记</dt><dd>{focus.important ? '重要联系人' : '未标记'}</dd></div>
                   <div><dt>分组</dt><dd>{focus.groups.join('、') || '未分组'}</dd></div>
                   <div><dt>圈子</dt><dd>{focusCircles.map((circle) => circle.name).join('、') || '未加入圈子'}</dd></div>
                   <div><dt>标签</dt><dd>{focus.tags.join('、') || '未添加标签'}</dd></div>
+                  <div><dt>备注</dt><dd className="ng-details-note">{focus.note || '暂无备注'}</dd></div>
                 </dl>
                 <Link className="ng-details-link" to={`/person/${encodeURIComponent(focus.id)}`}>
                   查看详情 <ArrowUpRight size={16} strokeWidth={1.8} aria-hidden="true" />

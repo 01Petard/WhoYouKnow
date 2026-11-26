@@ -10,7 +10,7 @@
 - `Layout.tsx` 装配响应式导航、路由内容与保存状态。
 - `Logo.tsx` 加载导航与欢迎页共用的品牌图标。
 - `Modal.tsx` 提供对话框、焦点管理与操作确认。
-- `NetworkGraph.tsx` 渲染关系网画布、联系人节点、图例和缩放控件。
+- `NetworkGraph.tsx` 渲染关系网和图例。按分组时标注全部有成员的分组。
 - `PersonCard.tsx` 提供联系人目录行与共用头像。
 - `QuickSelect.tsx` 提供可搜索的快速选择。
 - `RelationshipBadge.tsx` 展示联系人重要标记。
