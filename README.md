@@ -29,7 +29,7 @@ pnpm serve    # 托管 dist + 数据文件 API；可用 LINKMAP_DATA_FILE 指定
 
 ## Docker 部署和更新
 
-部署机需要 Git、Bash 和支持 `docker compose up --wait` 的 Docker Compose。用日常维护账户克隆项目。已有数据时，在首次启动前将旧版保存好的 `linkmap.json` 放到部署仓库的 `data/` 目录。服务通过 `http://127.0.0.1:4173` 访问。
+部署机需要 Git、Bash、Docker Engine 25 或更新版本，以及支持 `up --wait` 和 `healthcheck.start_interval` 的 Docker Compose。用日常维护账户克隆项目。已有数据时，在首次启动前将旧版保存好的 `linkmap.json` 放到部署仓库的 `data/` 目录。服务通过 `http://127.0.0.1:4173` 访问。
 
 首次部署和以后更新都在部署仓库运行同一条命令。更新前在开发机提交并推送，保存并关闭生产页面。
 
@@ -39,6 +39,7 @@ bash deploy.sh
 
 - 脚本快进拉取当前分支，再把目标提交打包为构建上下文。新镜像构建时执行测试和生产构建，同一提交已有镜像时直接复用。构建成功后，Compose 短暂停机切换容器并检查首页、数据 API 和数据目录权限。
 - 运行镜像使用 Alpine。Compose 切换版本时会替换旧容器。新版通过健康检查后，脚本会清理上一版的容器和镜像。旧镜像仍被其他容器使用时，Docker 会保留它。
+- 容器启动后最多 30 秒内每 1 秒检查一次。首次通过后，每 30 秒检查一次。
 - 用 `bash deploy.sh --rebuild` 跳过 Docker 构建缓存并重新构建镜像，即使 Git SHA 相同。用 `bash deploy.sh --rebuild <Git-SHA>` 强制重建指定提交。
 - 容器直接使用仓库内的 `data/linkmap.json`。从仓库运行的本地服务也使用该目录，部署时按当前文件继续使用。`data/` 由 Git 忽略，推送代码后部署机继续使用自己的数据文件。切换前已有数据时，脚本会保留一份 `data/.before-deploy.json`，下次切换更新这份副本。
 - 新容器未通过健康检查时，脚本会尝试恢复上一镜像。用 `bash deploy.sh <Git-SHA>` 可回退到指定提交，并沿用当前 Compose 配置。旧镜像已清理时，脚本会重新构建该提交。镜像切换和回退都沿用 `data/linkmap.json` 里的最新内容。

@@ -37,7 +37,8 @@ services:
               }
             })
           ]).catch(error => { console.error(error.message); process.exitCode = 1; });
-      interval: 3s
+      interval: 30s
       timeout: 2s
-      start_period: 5s
+      start_period: 30s
+      start_interval: 1s
       retries: 5

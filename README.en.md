@@ -35,6 +35,8 @@ Run `bash deploy.sh --rebuild` to rebuild without the Docker build cache, even i
 
 The runtime image uses Alpine. After the new container passes its health check, the script removes the previous container and image. If a rollout fails, the script can still restore the previous image. After a successful rollout, `bash deploy.sh <Git-SHA>` rebuilds the selected image if needed.
 
+Health checks require Docker Engine 25 or newer and Compose support for `healthcheck.start_interval`. Docker probes every second during startup for up to 30 seconds, then every 30 seconds after the first successful check.
+
 ## Reverse proxy example
 
 For public deployment, serve `dist` and `/api` from the same origin, terminate TLS at the proxy, and add access control. Keep `serve` bound to `127.0.0.1` as the only write path.
