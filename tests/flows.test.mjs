@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 使用 Node test、模拟文件 API 和浏览器存储。
- * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入和待联系规则的回归测试。
+ * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系和手记的回归测试。
  * [POS]: 验证核心数据流程，不访问项目真实数据文件。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -195,4 +195,67 @@ test('重要及待联系视图按本地日历跨月计算，与条件叠加，JS
   assert.ok(restored.ok)
   assert.equal(restored.data.people[1].lastContactAt, '2026-02-20')
   assert.equal(restored.data.people[3].lastContactAt, undefined)
+})
+
+test('联系手记允许同日消息和见面独立保存，编辑联系人不会丢失手记', async () => {
+  const { latestContactDate } = await import('../src/util/contactJournal.ts')
+  const f = fixture({ ...original, people: [person('原联系人', { lastContactAt: '2020-06-01' })] })
+  const { useStore } = await import('../src/store/useStore.ts?journal-crud')
+  await useStore.getState().hydrate()
+
+  const first = { date: '2020-05-12', method: 'message', note: '微信聊了近况' }
+  const second = { date: first.date, method: 'inPerson', note: '见面喝咖啡' }
+  assert.equal(useStore.getState().saveContactEntry('原联系人', first), true)
+  assert.equal(useStore.getState().saveContactEntry('原联系人', second), true)
+  assert.equal(useStore.getState().saveContactEntry('原联系人', { ...first, date: '2099-01-01' }), false)
+  await useStore.getState().storageSettled()
+  assert.equal(f.file.people[0].contactHistory.length, 2)
+  assert.equal(latestContactDate(f.file.people[0]), '2020-06-01')
+
+  const [entry] = f.file.people[0].contactHistory
+  assert.equal(useStore.getState().saveContactEntry('原联系人', { ...first, date: '2020-06-15' }, entry.id), true)
+  assert.equal(useStore.getState().updatePerson('原联系人', { name: '已编辑姓名' }), true)
+  await useStore.getState().storageSettled()
+  assert.equal(latestContactDate(f.file.people[0]), '2020-06-15')
+  assert.equal(f.file.people[0].contactHistory.length, 2)
+
+  assert.equal(useStore.getState().deleteContactEntry('原联系人', entry.id), true)
+  await useStore.getState().storageSettled()
+  assert.equal(f.file.people[0].contactHistory[0].note, second.note)
+  assert.equal(latestContactDate(f.file.people[0]), '2020-06-01')
+  assert.equal(useStore.getState().deleteContactEntry('原联系人', entry.id), false)
+})
+
+test('同一联系人的手记并发写入按记录合并，已有手记仍能删除', async () => {
+  const { mergeData } = await import('../src/util/merge.ts')
+  const entry = (id, date = '2020-11-26') => ({ id, date, method: 'call', note: id, updatedAt: date })
+  const withHistory = (contactHistory) => ({ ...original, people: [{ ...original.people[0], contactHistory }] })
+  const shared = entry('基线记录')
+  const mine = entry('本页新增')
+  const theirs = entry('另一页新增')
+  const merged = mergeData(withHistory([shared]), withHistory([mine]), withHistory([shared, theirs]))
+  assert.deepEqual(new Set(merged.people[0].contactHistory.map((item) => item.id)), new Set([mine.id, theirs.id]))
+  const firstWrites = mergeData(original, withHistory([mine]), withHistory([theirs]))
+  assert.equal(firstWrites.people[0].contactHistory.length, 2)
+})
+
+test('手记备份保留记录，最新日期更新待联系，往年今日排除今年', async () => {
+  const { collectContactEntries, wentByOnThisDay } = await import('../src/util/contactJournal.ts')
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  const { filterPeople } = await import('../src/util/queries.ts')
+  const history = [
+    { id:'year-old', date:'2024-11-26', method:'inPerson', note:'周年记录', updatedAt:'2024-11-26T00:00:00Z' },
+    { id:'recent', date:'2025-11-26', method:'call', note:'本次联系', updatedAt:'2025-11-26T00:00:00Z' },
+  ]
+  const data = { ...original, people: [person('原联系人', { important:true, lastContactAt:'2024-02-01', contactHistory:history })] }
+  const restore = validateBackup(JSON.parse(JSON.stringify(makeBackup(data))))
+  assert.equal(restore.ok, true)
+  assert.deepEqual(restore.data.people[0].contactHistory, history)
+  const journal = collectContactEntries(restore.data.people)
+  assert.deepEqual(journal.map(({ entry }) => entry.id), ['recent', 'year-old'])
+  assert.deepEqual(journal.filter(({ entry }) => wentByOnThisDay(entry.date, '2025-11-26')).map(({ entry }) => entry.id), ['year-old'])
+  assert.deepEqual(filterPeople(restore.data, { view:'followUp', search:'', groups:[], circles:[], tags:[] }, '2025-11-26'), [])
+  assert.equal(validateBackup(original).ok, true)
+  const invalid = { ...data, people: [person('重复编号', { contactHistory:[history[0], history[0]] })] }
+  assert.equal(validateBackup(invalid).ok, false)
 })

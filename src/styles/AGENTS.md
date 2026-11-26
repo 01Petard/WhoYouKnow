@@ -9,6 +9,7 @@
 - `directory.css` 定义联系人目录、筛选和概览。
 - `network.css` 定义普通和全屏关系网的画布、控件、图例和联系人资料位置。
 - `person-pages.css` 定义档案、录入表单和欢迎页。
+- `journal.css` 定义手记时间线、回顾卡和档案列表。
 - `organize.css` 定义分类、成员和数据设置页。
 
 [PROTOCOL]: Update this header on change, then check AGENTS.md

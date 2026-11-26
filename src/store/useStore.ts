@@ -1,19 +1,21 @@
 /**
  * [INPUT]: 依赖 zustand 的 create；依赖 ../types 全部领域类型；依赖 ../util/constants 的 DATA_VERSION；依赖 ../util/id 的 today/uid；依赖 ../util/csv 的 ParsedCsvRow；依赖 ../util/storage 的 bootstrap/persist/reloadFromFile
  * [OUTPUT]: 导出 useStore、UiState、emptyData，并再导出 today
- * [POS]: 管理联系人和我的资料；常规改动即时更新界面，备份恢复等待持久化。
+ * [POS]: 管理联系人、联系手记和我的资料；常规改动即时更新界面，备份恢复等待持久化。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { create } from 'zustand'
 import {
   type AppData,
   type Circle,
+  type ContactEntryInput,
   type FilterState,
   type Person,
   type PeopleView,
   type PersonInput,
   type StorageKind,
 } from '../types'
+import { isContactMethod } from '../util/contactJournal'
 import { DATA_VERSION } from '../util/constants'
 import { isDateOnly, today, uid } from '../util/id'
 import type { ParsedCsvRow } from '../util/csv'
@@ -121,6 +123,8 @@ interface Store extends Persisted {
   /** 把一位已有联系人迁移成「我」：从 people 移除，并清理涉及 TA 的关系边 */
   adoptAsMe: (personId: string) => boolean
   setLastContact: (id: string, date?: string) => boolean
+  saveContactEntry: (personId: string, input: ContactEntryInput, entryId?: string) => boolean
+  deleteContactEntry: (personId: string, entryId: string) => boolean
   setImportance: (id: string, important: boolean) => boolean
   addTag: (name: string) => boolean
   renameTag: (oldName: string, newName: string) => boolean
@@ -259,6 +263,7 @@ export const useStore = create<Store>((set, get) => {
         id,
         important: previous?.important,
         lastContactAt: previous?.lastContactAt,
+        contactHistory: previous?.contactHistory,
         createdAt: previous?.createdAt ?? person.createdAt,
       }
       return commit({
@@ -293,7 +298,9 @@ export const useStore = create<Store>((set, get) => {
       const data = get().data
       if (!data.me) return false
       const person = makePerson(input)
-      const me: Person = { ...person, id: data.me.id, createdAt: data.me.createdAt }
+      const me: Person = {
+        ...person, id: data.me.id, createdAt: data.me.createdAt, contactHistory: data.me.contactHistory,
+      }
       return commit({
         data: { ...data, me, ...collectVocabulary(data, me.tags, me.groups) },
       })
@@ -327,6 +334,30 @@ export const useStore = create<Store>((set, get) => {
           ),
         },
       })
+    },
+
+    saveContactEntry(personId, input, entryId) {
+      if (!isDateOnly(input.date) || input.date > today() || !isContactMethod(input.method)) return false
+      const data = get().data
+      const person = data.people.find((item) => item.id === personId)
+      if (!person) return false
+      const history = person.contactHistory ?? []
+      if (entryId && !history.some((entry) => entry.id === entryId)) return false
+      const updatedAt = nowIso()
+      const entry = { id: entryId ?? uid(), date: input.date, method: input.method, note: input.note.trim(), updatedAt }
+      const contactHistory = entryId ? history.map((item) => item.id === entryId ? entry : item) : [...history, entry]
+      return commit({
+        data: { ...data, people: data.people.map((item) => item === person ? { ...person, contactHistory, updatedAt } : item) },
+      })
+    },
+
+    deleteContactEntry(personId, entryId) {
+      const data = get().data
+      const person = data.people.find((item) => item.id === personId)
+      if (!person?.contactHistory?.some((entry) => entry.id === entryId)) return false
+      const remaining = person.contactHistory.filter((entry) => entry.id !== entryId)
+      const updated = { ...person, contactHistory: remaining.length ? remaining : undefined, updatedAt: nowIso() }
+      return commit({ data: { ...data, people: data.people.map((item) => item === person ? updated : item) } })
     },
 
     setImportance(id, important) {

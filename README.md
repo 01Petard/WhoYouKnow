@@ -136,6 +136,12 @@ whoyouknow.example.com {
 - 通过「重要」快速筛选标记过的联系人。「待联系」显示无记录或满 30 天未联系的重要联系人。可在详情页记录今天、补填日期或清除记录。
 - 人脉只显示联系人；当前用户在「我的信息」单独管理，不会出现在人脉中。
 
+### 联系手记
+
+- 在联系人档案记录见面、通话、消息或其他联系，同一天可写多条。
+- 从人脉页进入「联系手记」，按月份浏览，按姓名、内容或方式筛选。「往年今日」回看往年同一天的联系记录。
+- 上次联系取手动标记与手记的最新日期，并用于待联系筛选。手记随 JSON 完整备份保存。
+
 ### 关系网
 
 - 以「我」为中心，联系人可按分组、圈子或标签分布在不同扇区；每个扇区有颜色与标签。同一个人属于多个分组/圈子/标签时会出现在多个簇中。
@@ -162,7 +168,7 @@ whoyouknow.example.com {
 
 ## 路由
 
-`/people`（默认）、`/person/new`、`/person/:id`、`/person/:id/edit`、`/network`、`/profile`、`/profile/edit`、`/categories`、`/categories/groups?name=…`、`/categories/circles/:id`、`/settings`。
+`/people`（默认）、`/journal`、`/person/new`、`/person/:id`、`/person/:id/edit`、`/network`、`/profile`、`/profile/edit`、`/categories`、`/categories/groups?name=…`、`/categories/circles/:id`、`/settings`。
 
 响应式：`<1024px` 底部五项 Tab Bar；`≥1024px` 左侧竖向导航。宽屏内容区最大 1460px。
 

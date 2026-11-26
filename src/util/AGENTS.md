@@ -4,6 +4,7 @@
 
 - `backup.ts` 校验与迁移 JSON 备份。
 - `constants.ts` 提供共享常量和界面文案。
+- `contactJournal.ts` 查询最新联系日期、时间线与往年今日。
 - `contactIndex.ts` 按姓名首字母归类联系人。
 - `csv.ts` 按表头导入联系人并导出固定模板。
 - `format.ts` 格式化展示日期、相对时间与首字。

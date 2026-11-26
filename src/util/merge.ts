@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 依赖 ../types 的 AppData/Circle/Person
+ * [INPUT]: 依赖 ../types 的 AppData/Circle/Person/ContactEntry
  * [OUTPUT]: 导出 mergeData，用于多标签页写入冲突时的三方合并
  * [POS]: 存储层的纯函数边界；base=本页最后同步的版本，local=本页当前数据，remote=数据文件中的最新数据。
- *        同一实体按字段合并，同一字段冲突按 updatedAt 取新；一侧删除、另一侧未改则删除生效；两侧都改则保留改动。
+ *        联系手记按记录 ID 独立合并。其他字段发生冲突时按 updatedAt 取新；一侧删除、另一侧未改则删除生效；两侧都改则保留改动。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, Circle, Person } from '../types'
+import type { AppData, Circle, ContactEntry, Person } from '../types'
 
 function same(a: unknown, b: unknown): boolean {
   if (a === b) return true
@@ -34,6 +34,14 @@ function mergeRecord<T extends { updatedAt: string }>(base: T | undefined, local
     const theirs = remote[key]
     if (same(mine, before)) return [key, theirs]
     if (same(theirs, before)) return [key, mine]
+    if (key === 'contactHistory') {
+      const history = mergeRecords(
+        (before ?? []) as ContactEntry[],
+        (mine ?? []) as ContactEntry[],
+        (theirs ?? []) as ContactEntry[],
+      )
+      return [key, history.length ? history : undefined]
+    }
     if ((key === 'groups' || key === 'tags') && Array.isArray(before) && Array.isArray(mine) && Array.isArray(theirs)) {
       return [key, mergeNames(before, mine, theirs)]
     }

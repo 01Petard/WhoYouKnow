@@ -1,0 +1,82 @@
+/*
+ * [INPUT]: 使用设计 Token 与联系手记的页面和组件类名。
+ * [OUTPUT]: 提供手记时间线、往年今日和档案手记样式。
+ * [POS]: 共用手记条目样式，窄屏按上下顺序显示时间线和回顾。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+.contact-journal .page-count { margin-top: var(--sp-2); }
+
+.journal-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(225px, .43fr);
+  align-items: start;
+  gap: var(--sp-5);
+}
+.journal-timeline { min-width: 0; }
+.journal-timeline-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.journal-timeline-toolbar .search-field input { min-width: 0; }
+.journal-filter.input { width: auto; min-height: 44px; }
+.journal-month { margin-top: var(--sp-6); }
+.journal-month h2 {
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+  padding-block: var(--sp-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.journal-entries { list-style: none; padding: 0; margin: 0; }
+.journal-entry { padding: var(--sp-3) 0; min-width: 0; }
+.journal-entry + .journal-entry { border-top: 1px solid var(--border-subtle); }
+.journal-entry p, .journal-anniversaries li p {
+  margin-top: var(--sp-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+.journal-timeline-row, .journal-entry-meta, .contact-history-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.journal-timeline-row, .contact-history-heading { justify-content: space-between; }
+.journal-person { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; color: var(--text-heading); font-weight: var(--fw-semibold); }
+.journal-person span { overflow-wrap: anywhere; }
+.journal-person:hover { color: var(--color-action-active); }
+.journal-entry-meta time { font-size: var(--fs-caption); color: var(--text-secondary); }
+.journal-entry-actions { display: flex; justify-content: flex-end; gap: var(--sp-1); margin-top: var(--sp-1); }
+
+.journal-anniversaries { background: var(--color-action-wash); border-color: var(--color-primary-200); }
+.journal-anniversaries > svg { color: var(--color-action); }
+.journal-anniversaries h2 { margin-top: var(--sp-1); font-size: var(--fs-h2); }
+.journal-anniversaries ul { margin: var(--sp-3) 0 0; }
+.journal-anniversaries li { padding-block: var(--sp-3); border-top: 1px solid var(--color-primary-200); }
+.journal-anniversaries li:last-child { padding-bottom: 0; }
+.journal-anniversaries li a { display: inline-flex; gap: var(--sp-1); align-items: center; font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+.journal-anniversaries li a svg { flex: none; }
+.journal-anniversaries-empty { margin-top: var(--sp-3); }
+
+.contact-history { margin-top: var(--sp-5); }
+.contact-history-heading { margin-bottom: var(--sp-3); }
+.contact-history-heading h2 { display: flex; align-items: center; gap: var(--sp-2); }
+.contact-history-heading h2 svg { color: var(--color-action); }
+.contact-history .journal-entry:first-child { border-top: 1px solid var(--border-subtle); }
+.contact-history .journal-entry:last-child { padding-bottom: 0; }
+
+.directory-heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-2); }
+
+@media (max-width: 740px) {
+  .journal-workspace { grid-template-columns: minmax(0, 1fr); }
+  .journal-anniversaries { order: -1; }
+}
+
+@media (max-width: 430px) {
+  .directory-heading { flex-wrap: wrap; }
+  .directory-heading-actions { justify-content: flex-start; }
+  .journal-timeline-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .journal-filter.input { width: 100%; }
+}

@@ -1,10 +1,22 @@
 /**
  * [INPUT]: 不导入任何模块；定义 store、util、components、pages 共用的领域模型
- * [OUTPUT]: 导出 Person、Circle、AppData、BackupFile、StorageSnapshot、PersonInput、PeopleView、FilterState 等
+ * [OUTPUT]: 导出 Person、Circle、AppData、BackupFile、StorageSnapshot、PersonInput、ContactEntry、PeopleView、FilterState 等
  * [POS]: 全项目唯一的领域类型定义处；people 只存联系人，me 单独存当前用户；系统不保存联系人之间的关系边
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 export type Gender = '男' | '女' | '其他'
+
+export type ContactMethod = 'inPerson' | 'call' | 'message' | 'other'
+
+export interface ContactEntry {
+  id: string
+  date: string
+  method: ContactMethod
+  note: string
+  updatedAt: string
+}
+
+export type ContactEntryInput = Pick<ContactEntry, 'date' | 'method' | 'note'>
 
 export interface Person {
   id: string
@@ -14,7 +26,9 @@ export interface Person {
   birthday?: string
   channel: string
   metAt: string
+  /** 手动标记的日期。展示时与手记日期比较。 */
   lastContactAt?: string
+  contactHistory?: ContactEntry[]
   note: string
   tags: string[]
   groups: string[]

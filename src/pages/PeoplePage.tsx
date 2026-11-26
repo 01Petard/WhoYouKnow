@@ -1,12 +1,12 @@
 /**
  * [INPUT]: 依赖联系人查询、拼音索引、筛选状态与目录组件。
  * [OUTPUT]: 导出 PeoplePage。
- * [POS]: 人脉首页提供搜索、快速视图、分类筛选和分组入口。
+ * [POS]: 人脉首页提供搜索、分类筛选、分组及联系手记入口。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, ChevronRight, Folder, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowUpRight, BookOpen, ChevronRight, Folder, Plus, Search, SlidersHorizontal, X } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { FacetFilters } from '../components/FacetFilters'
 import { PersonCard } from '../components/PersonCard'
@@ -72,10 +72,15 @@ export function PeoplePage() {
           <h1 className="page-title">人脉</h1>
           <p className="page-count tabular">{data.people.length} 位联系人</p>
         </div>
-        <Link className="btn btn-primary directory-add" to="/person/new">
-          <Plus size={19} strokeWidth={2} aria-hidden="true" />
-          添加联系人
-        </Link>
+        <div className="directory-heading-actions">
+          <Link className="btn btn-secondary directory-add" to="/journal">
+            <BookOpen size={17} aria-hidden="true" /> 联系手记
+          </Link>
+          <Link className="btn btn-primary directory-add" to="/person/new">
+            <Plus size={19} strokeWidth={2} aria-hidden="true" />
+            添加联系人
+          </Link>
+        </div>
       </header>
 
       <div className="directory-layout">

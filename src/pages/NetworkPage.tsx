@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React、路由、联系人查询和 NetworkGraph 的画布与图例。
+ * [INPUT]: 依赖 React、路由、联系人查询、最新联系日期和 NetworkGraph 的画布与图例。
  * [OUTPUT]: 导出 NetworkPage。
  * [POS]: 在关系网页切换分类。将选中的联系人资料交给画布侧栏。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
@@ -10,6 +10,7 @@ import { ArrowUpRight, Layers, Network, Search, Tag, UsersRound, X } from 'lucid
 import { Avatar } from '../components/PersonCard'
 import { NetworkGraph } from '../components/NetworkGraph'
 import { useStore } from '../store/useStore'
+import { latestContactDate } from '../util/contactJournal'
 import { circlesOfPerson } from '../util/queries'
 
 const MODES = [
@@ -165,7 +166,7 @@ export function NetworkPage() {
                   <div><dt>认识时间</dt><dd>{focus.metAt || '未填写'}</dd></div>
                   <div><dt>生日</dt><dd>{focus.birthday || '未填写'}</dd></div>
                   <div><dt>性别</dt><dd>{focus.gender || '未填写'}</dd></div>
-                  <div><dt>上次联系</dt><dd>{focus.lastContactAt || '未记录'}</dd></div>
+                  <div><dt>上次联系</dt><dd>{latestContactDate(focus) || '未记录'}</dd></div>
                   <div><dt>重要标记</dt><dd>{focus.important ? '重要联系人' : '未标记'}</dd></div>
                   <div><dt>分组</dt><dd>{focus.groups.join('、') || '未分组'}</dd></div>
                   <div><dt>圈子</dt><dd>{focusCircles.map((circle) => circle.name).join('、') || '未加入圈子'}</dd></div>

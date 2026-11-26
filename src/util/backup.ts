@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 ../types 的 AppData/BackupFile/Circle/Person 等；依赖 ./constants 的 DATA_VERSION；依赖 ./id 校验上次联系日期；依赖浏览器 FileReader
+ * [INPUT]: 依赖 ../types 的 AppData/BackupFile/Circle/Person 等；依赖 ./constants 的 DATA_VERSION；依赖 ./id 和 ./contactJournal 校验联系日期和方式；依赖浏览器 FileReader
  * [OUTPUT]: 导出 ValidationResult、validateBackup、makeBackup、readJsonFile、readTextFile
  * [POS]: JSON 备份的校验与序列化边界；people 只存联系人，旧 selfId 迁移为 me；旧 edges 字段与状态/方向字段忽略
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, BackupFile, Circle, Gender, Person } from '../types'
+import type { AppData, BackupFile, Circle, ContactEntry, Gender, Person } from '../types'
 import { DATA_VERSION } from './constants'
+import { isContactMethod } from './contactJournal'
 import { isDateOnly } from './id'
 
 export type ValidationResult =
@@ -58,6 +59,20 @@ export function validateBackup(raw: unknown): ValidationResult {
     if (typeof item.id !== 'string' || typeof item.name !== 'string' || !item.name.trim()) {
       return '人物数据中存在缺失 id 或姓名的记录'
     }
+    const entries: ContactEntry[] = []
+    if (item.contactHistory !== undefined) {
+      if (!Array.isArray(item.contactHistory)) return '联系手记格式错误'
+      const ids = new Set<string>()
+      for (const entry of item.contactHistory) {
+        if (
+          !isRecord(entry) || typeof entry.id !== 'string' || !entry.id.trim() || ids.has(entry.id)
+          || !isDateOnly(entry.date) || !isContactMethod(entry.method) || typeof entry.note !== 'string'
+          || typeof entry.updatedAt !== 'string'
+        ) return '联系手记包含重复编号或无效字段'
+        ids.add(entry.id)
+        entries.push({ id: entry.id, date: entry.date, method: entry.method, note: entry.note, updatedAt: entry.updatedAt })
+      }
+    }
     return {
       id: item.id,
       name: item.name,
@@ -67,6 +82,7 @@ export function validateBackup(raw: unknown): ValidationResult {
       channel: asString(item.channel),
       metAt: asString(item.metAt),
       lastContactAt: isDateOnly(item.lastContactAt) ? item.lastContactAt : undefined,
+      contactHistory: entries.length ? entries : undefined,
       note: asString(item.note) || legacyNoteById.get(item.id) || '',
       tags: asStringArray(item.tags),
       groups: asStringArray(item.groups),

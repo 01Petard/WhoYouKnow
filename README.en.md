@@ -118,6 +118,12 @@ Notes:
 - A multi-row facet panel filters immediately: open it from Filters to see one row per dimension (group / circle / tag), with multi-select inside a dimension (OR) and AND across dimensions. Each row has “Unclassified” for people with no value in that dimension; “Clear all” clears the category selections.
 - The people directory contains contacts only; the current user lives in “My profile”.
 
+### Contact journal
+
+- Add as many entries as needed per day from a contact's profile. Record an in-person visit, call, message, or another kind of contact.
+- Open the journal from People to browse entries by month and filter by name, note, or method. On This Day revisits entries recorded on the same calendar date in previous years.
+- The latest entry or manually marked date drives follow-up status. JSON backups include journal entries.
+
 ### Network map
 
 - Centered on “me”. Contacts can be arranged in colored sectors by group, circle or tag. A person who belongs to several groups/circles/tags appears in several clusters.
@@ -145,7 +151,7 @@ Notes:
 
 ## Routes
 
-`/people` (default), `/person/new`, `/person/:id`, `/person/:id/edit`, `/network`, `/profile`, `/profile/edit`, `/categories`, `/categories/groups?name=…`, `/categories/circles/:id`, `/settings`.
+`/people` (default), `/journal`, `/person/new`, `/person/:id`, `/person/:id/edit`, `/network`, `/profile`, `/profile/edit`, `/categories`, `/categories/groups?name=…`, `/categories/circles/:id`, `/settings`.
 
 Responsive: five-item bottom tab bar below 1024px; sidebar navigation at 1024px and above. Content max-width is 1460px with responsive side padding.
 

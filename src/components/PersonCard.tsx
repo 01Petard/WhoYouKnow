@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 React 元素标识、路由链接、联系人字段与星标。
+ * [INPUT]: 依赖 React 元素标识、路由链接、联系人字段、最新联系日期与星标。
  * [OUTPUT]: 导出 Avatar 和 PersonCard。
  * [POS]: 各页面共用头像，目录行展示姓名、分组与上次联系日期。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
@@ -8,6 +8,7 @@ import { useId } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Person } from '../types'
+import { latestContactDate } from '../util/contactJournal'
 import { initials } from '../util/format'
 import { ImportantStar } from './RelationshipBadge'
 
@@ -24,6 +25,7 @@ export function Avatar({ person, small = false }: { person: Pick<Person, 'name' 
 
 export function PersonCard({ person }: { person: Person }) {
   const contactDateId = useId()
+  const lastContact = latestContactDate(person)
   const subtitle = person.channel || person.tags.slice(0, 2).join('、')
   const group = person.groups[0]
   const groupCount = person.groups.length - 1
@@ -48,9 +50,9 @@ export function PersonCard({ person }: { person: Person }) {
           </>
         ) : <span className="person-muted">未分组</span>}
       </span>
-      <span id={contactDateId} className={`person-contact-date tabular${person.lastContactAt ? '' : ' person-muted'}`}>
+      <span id={contactDateId} className={`person-contact-date tabular${lastContact ? '' : ' person-muted'}`}>
         <span className="sr-only">上次联系：</span>
-        {person.lastContactAt ? <time dateTime={person.lastContactAt}>{person.lastContactAt}</time> : '未记录'}
+        {lastContact ? <time dateTime={lastContact}>{lastContact}</time> : '未记录'}
       </span>
       <ChevronRight className="person-chevron" size={16} aria-hidden="true" />
     </Link>

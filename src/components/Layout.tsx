@@ -22,12 +22,12 @@ const NAV = [
 const PROFILE = { to: '/profile', label: '我的信息', Icon: UserRound } as const
 
 function isSectionActive(pathname: string, to: string): boolean {
-  if (to === '/people') return pathname === '/people' || pathname.startsWith('/person/')
+  if (to === '/people') return pathname === '/people' || pathname === '/journal' || pathname.startsWith('/person/')
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 
 function parentOf(pathname: string): string | null {
-  if (pathname.startsWith('/person/')) return '/people'
+  if (pathname === '/journal' || pathname.startsWith('/person/')) return '/people'
   if (pathname === '/profile/edit') return '/profile'
   if (pathname.startsWith('/categories/groups') || pathname.startsWith('/categories/circles')) return '/categories'
   return null

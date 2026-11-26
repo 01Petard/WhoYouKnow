@@ -4,6 +4,7 @@
 
 - `Alert.tsx` 展示页面内持续提示。
 - `BackupPanel.tsx` 在设置和首次启动页预览并恢复备份。
+- `ContactHistory.tsx` 显示并编辑联系人档案中的手记。
 - `CircleEditor.tsx` 编辑圈子名称与分组成员。
 - `EmptyState.tsx` 展示空状态与下一步操作。
 - `FacetFilters.tsx` 渲染多选分类筛选。

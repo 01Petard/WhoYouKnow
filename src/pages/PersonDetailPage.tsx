@@ -1,17 +1,19 @@
 /**
  * [INPUT]: 依赖 react-router-dom 的 useNavigate/useParams；依赖 lucide-react 的 ArrowLeft/CalendarClock/Pencil/Plus/Star/Trash2；依赖 ../components 的 ConfirmDialog/EmptyState/useToast/Avatar；依赖 ../store/useStore 的 data/deletePerson/setImportance/setLastContact；依赖 ../util/queries 的 circlesOfPerson
  * [OUTPUT]: 导出 PersonDetailPage 组件
- * [POS]: 联系人详情；people 只含联系人，当前用户不在其中；资料与联系记录分区；分类链接指向对应成员页，编辑与删除使用既有入口；路由 /person/:id
+ * [POS]: 联系人详情；people 只含联系人，当前用户不在其中；资料与联系记录分区；提供联系手记入口；分类链接指向对应成员页，编辑与删除使用既有入口；路由 /person/:id
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, Pencil, Plus, Star, Trash2 } from 'lucide-react'
+import { ContactHistory } from '../components/ContactHistory'
 import { ConfirmDialog } from '../components/Modal'
 import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import { Avatar } from '../components/PersonCard'
 import { useStore } from '../store/useStore'
+import { latestContactDate } from '../util/contactJournal'
 import { today } from '../util/id'
 import { COPY } from '../util/constants'
 import { circlesOfPerson } from '../util/queries'
@@ -105,7 +107,7 @@ export function PersonDetailPage() {
             <div className="person-contact-current">
               <span className="person-contact-icon"><CalendarClock size={21} strokeWidth={1.7} aria-hidden="true" /></span>
               <p className="person-contact-date tabular">
-                <span>上次联系：</span><strong>{person.lastContactAt ?? '未记录'}</strong>
+                <span>上次联系：</span><strong>{latestContactDate(person) ?? '未记录'}</strong>
               </p>
             </div>
             <form onSubmit={(event) => {
@@ -113,7 +115,7 @@ export function PersonDetailPage() {
               if (dateInput) recordContact(dateInput)
             }}>
               <div className="field">
-                <label className="field-label" htmlFor="last-contact-date">联系日期</label>
+                <label className="field-label" htmlFor="last-contact-date">手动标记日期</label>
                 <input
                   id="last-contact-date"
                   type="date"
@@ -128,7 +130,7 @@ export function PersonDetailPage() {
               <div className="row-actions">
                 <button type="button" className="btn btn-primary btn-sm" disabled={person.lastContactAt === currentDate} onClick={() => recordContact(currentDate)}>记录今天</button>
                 <button type="submit" className="btn btn-secondary btn-sm" disabled={!dateInput || dateInput === person.lastContactAt}>保存日期</button>
-                {person.lastContactAt && <button type="button" className="btn btn-ghost btn-sm" onClick={() => recordContact()}>清除日期</button>}
+                {person.lastContactAt && <button type="button" className="btn btn-ghost btn-sm" onClick={() => recordContact()}>清除手动标记</button>}
               </div>
             </form>
           </section>
@@ -166,6 +168,8 @@ export function PersonDetailPage() {
         </div>
       </div>
 
+      <ContactHistory person={person} key={id} />
+
       <footer className="person-workspace-footer">
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/person/new')}>
           <Plus size={16} aria-hidden="true" /> 继续添加
@@ -178,7 +182,7 @@ export function PersonDetailPage() {
       <ConfirmDialog
         open={pendingDeletePerson}
         title="删除人物"
-        message={COPY.deletePersonDialog(person.name)}
+        message={person.contactHistory?.length ? `删除「${person.name}」及其 ${person.contactHistory.length} 条联系手记？此操作不可撤销。` : COPY.deletePersonDialog(person.name)}
         confirmLabel="删除"
         destructive
         onClose={() => setPendingDeletePerson(false)}

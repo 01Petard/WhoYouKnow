@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 ../types 的 AppData/Circle/Person；依赖 ./constants 的分类哨兵与待联系天数；依赖 ./id 的日历日期
+ * [INPUT]: 依赖 ../types 的 AppData/Circle/Person；依赖 ./constants 的分类哨兵与待联系天数；依赖联系手记和本地日历日期
  * [OUTPUT]: 导出 personById、circleMembers、circlesOfPerson、filterPeople
  * [POS]: 纯读查询层；people 只含联系人，系统不保存联系人之间的关系边；只消费 AppData，不产生写操作
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, Circle, PeopleView, Person } from '../types'
 import { FOLLOW_UP_DAYS, UNCLASSIFIED } from './constants'
+import { latestContactDate } from './contactJournal'
 import { today } from './id'
 
 const byName = (a: Person, b: Person) => a.name.localeCompare(b.name, 'zh-CN')
@@ -48,7 +49,11 @@ export function filterPeople(data: AppData, filter: PeopleFilter, currentDate = 
   return data.people
     .filter((p) => {
       if (filter.view === 'important' && !p.important) return false
-      if (filter.view === 'followUp' && (!p.important || (p.lastContactAt && p.lastContactAt > cutoff))) return false
+      if (filter.view === 'followUp') {
+        if (!p.important) return false
+        const last = latestContactDate(p)
+        if (last && last > cutoff) return false
+      }
       // 分组：未分类 = 没有任何分组；与已选分组之间是 OR
       if (filter.groups.length) {
         const groupMatch = filter.groups.some((group) =>

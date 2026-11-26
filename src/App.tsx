@@ -1,13 +1,14 @@
 /**
  * [INPUT]: 依赖 react-router-dom 的 Routes/Route/Navigate；依赖 ./store/useStore 的 data/hydrated/hydrate；依赖 ./components/Layout 与 ./pages 下页面组件
  * [OUTPUT]: 默认导出 App，负责启动加载、当前用户门禁与全部路由的装配
- * [POS]: 装配路由与启动恢复；连接恢复时触发同步，未保存时保护页面退出。
+ * [POS]: 装配人脉、联系手记等路由与启动恢复；连接恢复时触发同步，未保存时保护页面退出。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import { Layout } from './components/Layout'
+import { ContactJournalPage } from './pages/ContactJournalPage'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonFormPage } from './pages/PersonFormPage'
 import { PersonDetailPage } from './pages/PersonDetailPage'
@@ -63,6 +64,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/people" replace />} />
         <Route path="/people" element={<PeoplePage />} />
+        <Route path="/journal" element={<ContactJournalPage />} />
         <Route path="/person/new" element={<PersonFormPage />} />
         <Route path="/person/:id" element={<PersonDetailPage />} />
         <Route path="/person/:id/edit" element={<PersonFormPage />} />
