@@ -27,6 +27,27 @@ pnpm serve    # 托管 dist + 数据文件 API；可用 LINKMAP_DATA_FILE 指定
 
 技术栈：React 18 + Vite + TypeScript + react-router-dom + zustand + lucide-react。包管理与脚本统一使用 pnpm；无 UI 组件库，样式基于 `src/styles/tokens.css` 的语义 Token。
 
+## Docker 部署和更新
+
+部署机需要 Git、Bash 和支持 `docker compose up --wait` 的 Docker Compose。用日常维护账户克隆项目。已有数据时，在首次启动前将旧版保存好的 `linkmap.json` 放到部署仓库的 `data/` 目录。服务通过 `http://127.0.0.1:4173` 访问。
+
+首次部署和以后更新都在部署仓库运行同一条命令。更新前在开发机提交并推送，保存并关闭生产页面。
+
+```bash
+bash deploy.sh
+```
+
+- 脚本快进拉取当前分支，再把目标提交打包为构建上下文。新镜像构建时执行测试和生产构建，同一提交已有镜像时直接复用。构建成功后，Compose 短暂停机切换容器并检查首页、数据 API 和数据目录权限。
+- 容器直接使用仓库内的 `data/linkmap.json`。从仓库运行的本地服务也使用该目录，部署时按当前文件继续使用。`data/` 由 Git 忽略，推送代码后部署机继续使用自己的数据文件。切换前已有数据时，脚本会保留一份 `data/.before-deploy.json`，下次切换更新这份副本。
+- 新容器未通过健康检查时，脚本会尝试恢复上一镜像。用 `bash deploy.sh <Git-SHA>` 可直接部署指定提交，跳过拉取并使用部署仓库当前的 Compose 配置。镜像切换和回退都沿用 `data/linkmap.json` 里的最新内容。
+- 用 `docker compose ps` 查看状态，用 `docker compose logs --tail 50 app` 查看日志。上线后在设置页确认保存位置显示「项目文件」，并打开一个已有联系人。
+
+已有部署仍在使用旧版脚本时，先手动执行一次 `git pull --ff-only`，再运行 `bash deploy.sh`。
+
+需要恢复 `data/.before-deploy.json` 时，先关闭页面并运行 `docker compose stop app`。另存当前 `data/linkmap.json`，将切换前副本复制为 `data/linkmap.json`，再执行 `docker compose start app`，并验证可以读取和保存。长期备份可在设置页导出完整 JSON，另存到其他设备，并通过设置页的「备份与恢复」导入。
+
+宿主机只在 `127.0.0.1:4173` 发布端口。远程访问可走 SSH 隧道，或由宿主机上的反向代理对整个站点启用认证和 HTTPS，并转发到该端口。
+
 ## 反向代理示例
 
 对外部署时把 `dist` 与 `/api` 放在同一域名下，由代理终止 TLS 并加访问控制；`serve` 继续只监听 `127.0.0.1`，作为唯一的数据写入入口。

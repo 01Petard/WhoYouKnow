@@ -27,6 +27,10 @@ pnpm serve    # serve dist + the data-file API; LINKMAP_DATA_FILE selects any fi
 
 Stack: React 18 + Vite + TypeScript + react-router-dom + zustand + lucide-react. pnpm is the package manager and script runner. No UI framework; styles are driven by the semantic tokens in `src/styles/tokens.css`.
 
+## Docker deployment
+
+On the Docker host, clone the repository and run `bash deploy.sh` for both initial deployment and updates. It fast-forwards the current branch, builds the image for a new commit, and deploys it with Docker Compose. The service uses the checkout’s `data/` directory and listens on `127.0.0.1:4173`. See the [deployment and recovery instructions](README.md#docker-部署和更新).
+
 ## Reverse proxy example
 
 For public deployment, serve `dist` and `/api` from the same origin, terminate TLS at the proxy, and add access control. Keep `serve` bound to `127.0.0.1` as the only write path.

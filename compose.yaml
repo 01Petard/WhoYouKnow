@@ -1,0 +1,43 @@
+name: whoyouknow
+
+services:
+  app:
+    image: ${WHOYOUKNOW_IMAGE:-whoyouknow:local}
+    pull_policy: never
+    init: true
+    restart: unless-stopped
+    user: "${WHOYOUKNOW_UID:-1000}:${WHOYOUKNOW_GID:-1000}"
+    ports:
+      - "127.0.0.1:4173:4173"
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+        bind:
+          create_host_path: false
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          const { accessSync, constants } = require('node:fs');
+          accessSync('/data', constants.W_OK | constants.X_OK);
+          Promise.all([
+            fetch('http://127.0.0.1:4173/').then(response => {
+              if (!response.ok) throw new Error('首页不可用');
+            }),
+            fetch('http://127.0.0.1:4173/api/data').then(async response => {
+              const body = await response.json();
+              if (response.status === 404 && body?.reason === 'no-data-file') return;
+              if (!response.ok) throw new Error('数据文件不可读');
+              const data = body?.data;
+              if (typeof data?.version !== 'number' || !['people', 'tags', 'groups'].every(key => Array.isArray(data[key]))) {
+                throw new Error('数据文件格式异常');
+              }
+            })
+          ]).catch(error => { console.error(error.message); process.exitCode = 1; });
+      interval: 3s
+      timeout: 2s
+      start_period: 5s
+      retries: 5
