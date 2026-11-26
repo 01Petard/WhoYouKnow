@@ -31,6 +31,8 @@ Stack: React 18 + Vite + TypeScript + react-router-dom + zustand + lucide-react.
 
 On the Docker host, clone the repository and run `bash deploy.sh` for both initial deployment and updates. It fast-forwards the current branch, builds the image for a new commit, and deploys it with Docker Compose. The service uses the checkout’s `data/` directory and listens on `127.0.0.1:4173`. See the [deployment and recovery instructions](README.md#docker-部署和更新).
 
+Run `bash deploy.sh --rebuild` to rebuild without the Docker build cache, even if the Git commit is unchanged.
+
 ## Reverse proxy example
 
 For public deployment, serve `dist` and `/api` from the same origin, terminate TLS at the proxy, and add access control. Keep `serve` bound to `127.0.0.1` as the only write path.

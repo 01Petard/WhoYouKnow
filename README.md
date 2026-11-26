@@ -38,6 +38,7 @@ bash deploy.sh
 ```
 
 - 脚本快进拉取当前分支，再把目标提交打包为构建上下文。新镜像构建时执行测试和生产构建，同一提交已有镜像时直接复用。构建成功后，Compose 短暂停机切换容器并检查首页、数据 API 和数据目录权限。
+- 用 `bash deploy.sh --rebuild` 跳过 Docker 构建缓存并重新构建镜像，即使 Git SHA 相同。用 `bash deploy.sh --rebuild <Git-SHA>` 强制重建指定提交。
 - 容器直接使用仓库内的 `data/linkmap.json`。从仓库运行的本地服务也使用该目录，部署时按当前文件继续使用。`data/` 由 Git 忽略，推送代码后部署机继续使用自己的数据文件。切换前已有数据时，脚本会保留一份 `data/.before-deploy.json`，下次切换更新这份副本。
 - 新容器未通过健康检查时，脚本会尝试恢复上一镜像。用 `bash deploy.sh <Git-SHA>` 可直接部署指定提交，跳过拉取并使用部署仓库当前的 Compose 配置。镜像切换和回退都沿用 `data/linkmap.json` 里的最新内容。
 - 用 `docker compose ps` 查看状态，用 `docker compose logs --tail 50 app` 查看日志。上线后在设置页确认保存位置显示「项目文件」，并打开一个已有联系人。

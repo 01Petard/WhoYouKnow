@@ -9,7 +9,7 @@
 - `docs/design/` 保留早期设计规范。
 - `Dockerfile` 和 `.dockerignore` 定义构建、测试与运行镜像的内容。
 - `compose.yaml` 运行单容器服务，将部署仓库的 `data/` 挂载到 `/data`。
-- `deploy.sh` 拉取 Git 更新、构建并切换镜像，切换前复制数据文件。
+- `deploy.sh` 拉取 Git 更新、按需重建并切换镜像，切换前复制数据文件。
 - `server.mjs` 托管生产构建并挂载文件 API。
 - `vite.config.ts` 在开发和预览服务中挂载同一 API。
 - `package.json` 声明依赖、构建和测试命令。
