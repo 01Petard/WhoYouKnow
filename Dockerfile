@@ -13,7 +13,7 @@ COPY src ./src
 COPY tests ./tests
 RUN pnpm test && pnpm build
 
-FROM node:24-bookworm-slim
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=4173 LINKMAP_DATA_FILE=/data/linkmap.json
 COPY --from=build /app/dist ./dist

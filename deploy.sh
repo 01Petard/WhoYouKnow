@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: 依赖当前分支的 Git 上游或指定提交、Docker Compose 和仓库的 data 目录。
-# [OUTPUT]: 拉取更新，复用或强制重建镜像，保存切换前的数据副本。
+# [OUTPUT]: 拉取更新，复用或重建镜像，备份数据并清理已替换的容器和镜像。
 # [POS]: 部署失败时尝试重启上一容器使用的镜像，共用同一数据目录。
 # [PROTOCOL]: Update this header on change, then check AGENTS.md
 set -euo pipefail
@@ -66,6 +66,17 @@ if [[ "$image_changed" == true && -f data/linkmap.json ]]; then
 fi
 
 if docker compose up --detach --wait --wait-timeout 30 app; then
+  if [[ -n "$previous_container" ]] && docker container inspect "$previous_container" >/dev/null 2>&1; then
+    current_container=$(docker compose ps --quiet app)
+    if [[ -n "$current_container" && "$previous_container" != "$current_container" ]]; then
+      docker container rm "$previous_container" >/dev/null
+    fi
+  fi
+  if [[ -n "$previous_image_id" && "$previous_image_id" != "$image_id" ]]; then
+    if ! docker image rm --no-prune "$previous_image_id" >/dev/null; then
+      printf '部署已完成，旧镜像 %s 清理失败。\n' "$previous_image_id" >&2
+    fi
+  fi
   printf '已部署 %s，访问 http://127.0.0.1:4173\n' "$revision"
   exit 0
 fi
