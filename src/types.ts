@@ -1,8 +1,8 @@
 /**
  * [INPUT]: 不导入任何模块；定义 store、util、components、pages 共用的领域模型
- * [OUTPUT]: 导出 Person、Circle、AppData、BackupFile、StorageSnapshot、PersonInput、FilterState 等
+ * [OUTPUT]: 导出 Person、Circle、AppData、BackupFile、StorageSnapshot、PersonInput、PeopleView、FilterState 等
  * [POS]: 全项目唯一的领域类型定义处；people 只存联系人，me 单独存当前用户；系统不保存联系人之间的关系边
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 export type Gender = '男' | '女' | '其他'
 
@@ -14,6 +14,7 @@ export interface Person {
   birthday?: string
   channel: string
   metAt: string
+  lastContactAt?: string
   note: string
   tags: string[]
   groups: string[]
@@ -72,6 +73,8 @@ export interface PersonInput {
   tags?: string[]
   groups?: string[]
 }
+
+export type PeopleView = 'all' | 'important' | 'followUp'
 
 export interface FilterState {
   /** 分组名筛选 */

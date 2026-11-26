@@ -1,8 +1,8 @@
 /**
- * [INPUT]: 依赖 react-router-dom 的 useNavigate/useParams；依赖 lucide-react 的 Pencil/Star/Trash2；依赖 ../components 的 ConfirmDialog/EmptyState/useToast/Avatar；依赖 ../store/useStore 的 data/deletePerson/setImportance；依赖 ../util/queries 的 circlesOfPerson
+ * [INPUT]: 依赖 react-router-dom 的 useNavigate/useParams；依赖 lucide-react 的 Pencil/Star/Trash2；依赖 ../components 的 ConfirmDialog/EmptyState/useToast/Avatar；依赖 ../store/useStore 的 data/deletePerson/setImportance/setLastContact；依赖 ../util/queries 的 circlesOfPerson
  * [OUTPUT]: 导出 PersonDetailPage 组件
- * [POS]: 联系人详情；people 只含联系人，当前用户不在其中；展示资料、分组/圈子与编辑/删除；路由 /person/:id
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [POS]: 联系人详情；people 只含联系人，当前用户不在其中；展示资料、分类与上次联系日期，提供编辑与删除入口；路由 /person/:id
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -12,6 +12,7 @@ import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import { Avatar } from '../components/PersonCard'
 import { useStore } from '../store/useStore'
+import { today } from '../util/id'
 import { COPY } from '../util/constants'
 import { circlesOfPerson } from '../util/queries'
 
@@ -21,7 +22,10 @@ export function PersonDetailPage() {
   const toast = useToast()
   const data = useStore((s) => s.data)
   const deletePerson = useStore((s) => s.deletePerson)
+  const setLastContact = useStore((s) => s.setLastContact)
   const setImportance = useStore((s) => s.setImportance)
+  const [contactDate, setContactDate] = useState<string | null>(null)
+  const [contactError, setContactError] = useState('')
   const [pendingDeletePerson, setPendingDeletePerson] = useState(false)
 
   const person = data.people.find((p) => p.id === id)
@@ -36,6 +40,18 @@ export function PersonDetailPage() {
         <EmptyState title="没有找到这个人" actionLabel="返回人脉" onAction={() => navigate('/people')} />
       </div>
     )
+  }
+
+  const currentDate = today()
+  const dateInput = contactDate ?? person.lastContactAt ?? ''
+
+  function recordContact(date?: string) {
+    if (!setLastContact(id, date)) {
+      setContactError('请选择今天或更早的有效日期，或稍后重试。')
+      return
+    }
+    setContactDate(null)
+    setContactError('')
   }
 
   return (
@@ -113,6 +129,36 @@ export function PersonDetailPage() {
       </div>
 
       <div className="card" style={{ marginTop: 'var(--sp-4)' }}>
+        <h2>联系记录</h2>
+        <p className="hint" style={{ marginTop: 'var(--sp-2)' }}>
+          上次联系：{person.lastContactAt ?? '未记录'}
+        </p>
+        <form style={{ marginTop: 'var(--sp-3)' }} onSubmit={(event) => {
+          event.preventDefault()
+          if (dateInput) recordContact(dateInput)
+        }}>
+          <div className="field">
+            <label className="field-label" htmlFor="last-contact-date">联系日期</label>
+            <input
+              id="last-contact-date"
+              type="date"
+              max={currentDate}
+              value={dateInput}
+              onChange={(event) => { setContactDate(event.target.value); setContactError('') }}
+              aria-invalid={Boolean(contactError)}
+              aria-describedby={contactError ? 'last-contact-error' : undefined}
+            />
+            {contactError && <p className="field-error" id="last-contact-error" role="alert">{contactError}</p>}
+          </div>
+          <div className="row-actions">
+            <button type="submit" className="btn btn-secondary btn-sm" disabled={!dateInput || dateInput === person.lastContactAt}>保存日期</button>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={person.lastContactAt === currentDate} onClick={() => recordContact(currentDate)}>记录今天</button>
+            {person.lastContactAt && <button type="button" className="btn btn-ghost btn-sm" onClick={() => recordContact()}>清除日期</button>}
+          </div>
+        </form>
+      </div>
+
+      <div className="card" style={{ marginTop: 'var(--sp-4)' }}>
         <h2 className="section-title" style={{ fontSize: 'var(--fs-h3)' }}>关系</h2>
         <p className="hint" style={{ marginTop: 'var(--sp-2)' }}>
           所有人默认与你相识。联系人的归类由分组、圈子与标签维护，系统不保存联系人彼此之间的关系。
@@ -128,7 +174,7 @@ export function PersonDetailPage() {
         onClose={() => setPendingDeletePerson(false)}
         onConfirm={() => {
           if (!deletePerson(person.id)) { toast.show('删除失败，请重试'); return }
-          toast.show(`已删除 ${person.name}`)
+          toast.showAfterFileSave(`已删除 ${person.name}`)
           navigate('/people', { replace: true })
         }}
       />

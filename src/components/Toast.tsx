@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 react 的 createContext/useContext/hooks；依赖 lucide-react 的 CheckCircle2；依赖 ../util/constants 的 TOAST_MS/TOAST_UNDO_MS
+ * [INPUT]: 依赖 react 的 createContext/useContext/hooks；依赖 lucide-react 的 CheckCircle2；依赖 store 的保存结果；依赖 ../util/constants 的 TOAST_MS/TOAST_UNDO_MS
  * [OUTPUT]: 导出 ToastProvider 与 useToast
- * [POS]: 全局轻提示上下文的唯一实现，支持撤销回调与自动消失；在 main.tsx 包裹应用，页面经 useToast 调用
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [POS]: 全局轻提示上下文的唯一实现，支持操作反馈、保存成功提示与撤销；在 main.tsx 包裹应用，页面经 useToast 调用
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CheckCircle2 } from 'lucide-react'
+import { useStore } from '../store/useStore'
 import { TOAST_MS, TOAST_UNDO_MS } from '../util/constants'
 
 interface ToastOptions {
@@ -22,6 +23,7 @@ interface ToastItem extends Required<Pick<ToastOptions, 'duration'>> {
 }
 
 interface ToastApi {
+  showAfterFileSave: (message: string) => void
   show: (message: string, options?: ToastOptions) => void
 }
 
@@ -54,7 +56,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return () => map.forEach((timer) => window.clearTimeout(timer))
   }, [])
 
-  const api = useMemo(() => ({ show }), [show])
+  const showAfterFileSave = useCallback((message: string) => {
+    void useStore.getState().storageSettled().then((result) => {
+      if (result?.ok && result.kind === 'file' && !result.notice) show(message)
+    })
+  }, [show])
+
+  const api = useMemo(() => ({ show, showAfterFileSave }), [show, showAfterFileSave])
 
   return (
     <ToastContext.Provider value={api}>

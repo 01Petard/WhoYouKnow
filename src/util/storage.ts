@@ -1,219 +1,246 @@
 /**
- * [INPUT]: 依赖 ./backup 的 validateBackup；依赖 ./merge 的 mergeData；依赖 ./constants 的 STORAGE_KEY/DATA_FILE_PATH；依赖浏览器 fetch 与 localStorage
- * [OUTPUT]: 导出 bootstrap、persist、reloadFromFile、DATA_FILE_PATH
- * [POS]: 项目文件存储适配层；优先读写 /api/data 对应的数据文件，失败时回退浏览器本地镜像。
- *        PUT 携带 If-Match 版本；409 时按 base/local/remote 三方合并后重试，避免多标签页互相覆盖。
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [INPUT]: 依赖备份校验、三方合并、浏览器 localStorage 和项目文件 API。
+ * [OUTPUT]: 提供启动恢复、队列写入和文件重读。
+ * [POS]: 每笔写入基于提交前的快照；浏览器为每页单独保存待同步草稿。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, StorageKind, StorageSnapshot } from '../types'
 import { validateBackup } from './backup'
 import { DATA_FILE_PATH, STORAGE_KEY } from './constants'
+import { uid } from './id'
 import { mergeData } from './merge'
 
 const API = '/api/data'
 const MAX_ATTEMPTS = 3
-/** 单次请求上限；超时中断并回退浏览器本地，避免写队列永久悬挂 */
 const REQUEST_TIMEOUT_MS = 10_000
+const DRAFT_PREFIX = `${STORAGE_KEY}.pending.`
+let draftKey: string | undefined
 export { DATA_FILE_PATH }
 
-function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
-  const controller = new AbortController()
-  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-  return fetch(input, { ...init, signal: controller.signal }).finally(() => window.clearTimeout(timer))
+interface PendingWrite {
+  base: AppData
+  snapshot: StorageSnapshot
 }
 
-interface PersistResult {
+export interface PersistResult {
   ok: boolean
   kind: StorageKind
   notice?: string
-  savedAt?: string
-  /** 发生并发合并时返回合并后的数据，供 store 采用 */
-  data?: AppData
+  data: AppData
 }
 
-/** 本页最后一次成功读写的文件版本；null = 尚未与服务端对齐 */
-let revision: string | null = null
-/** 本页最后一次成功同步的数据；三方合并的 base */
-let baseData: AppData | null = null
-/** 本页写入串行队列：保证 revision/baseData 按请求顺序更新 */
+type Remote =
+  | { kind: 'file'; revision: string; snapshot: StorageSnapshot }
+  | { kind: 'missing'; revision: string }
+  | { kind: 'unavailable' }
+
+let remote: Remote = { kind: 'unavailable' }
+let working: AppData | undefined
+let pending: PendingWrite | undefined
 let writeQueue: Promise<unknown> = Promise.resolve()
 
-function normalize(raw: unknown): StorageSnapshot | null {
-  if (!raw || typeof raw !== 'object') return null
-  const parsed = raw as Partial<StorageSnapshot>
-  if (!parsed.data) return null
-  const check = validateBackup(parsed.data)
-  if (!check.ok) return null
-  return {
-    data: check.data,
-    savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : undefined,
-  }
+function request(init: RequestInit = {}): Promise<Response> {
+  return fetch(API, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
 }
 
-function readLocal(): StorageSnapshot | null {
+function normalize(raw: unknown): StorageSnapshot | undefined {
+  if (!raw || typeof raw !== 'object') return
+  const parsed = raw as Partial<StorageSnapshot>
+  const check = validateBackup(parsed.data)
+  if (check.ok) return { data: check.data, savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : undefined }
+}
+
+function readLocal(key: string): unknown {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? normalize(JSON.parse(raw)) : null
+    return JSON.parse(localStorage.getItem(key) ?? 'null')
   } catch {
     return null
   }
 }
 
-function writeLocal(snapshot: StorageSnapshot): boolean {
+function writeLocal(key: string, value: unknown): boolean {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
+    localStorage.setItem(key, JSON.stringify(value))
     return true
   } catch {
     return false
   }
 }
 
-function revisionFrom(response: Response): string | null {
-  const etag = response.headers.get('etag')
-  if (!etag) return null
-  return etag.replace(/^W\//, '').replace(/^"|"$/g, '')
-}
-
-/** 读取数据文件；reachable=false 表示文件 API 不可用（不是 404 空文件） */
-async function readRemote(): Promise<{
-  reachable: boolean
-  snapshot: StorageSnapshot | null
-  revision: string | null
-}> {
+function clearDraft(key?: string) {
+  if (!key) return
   try {
-    const response = await fetchWithTimeout(API, { cache: 'no-store' })
-    const nextRevision = revisionFrom(response)
-    if (response.status === 404) return { reachable: true, snapshot: null, revision: nextRevision }
-    if (!response.ok) return { reachable: false, snapshot: null, revision: null }
-    return { reachable: true, snapshot: normalize(await response.json()), revision: nextRevision }
+    localStorage.removeItem(key)
   } catch {
-    return { reachable: false, snapshot: null, revision: null }
+    // 文件已保存；保留的草稿在下次打开时可以幂等合并。
   }
 }
 
-/** 启动：项目文件优先；文件为空时迁移浏览器本地旧数据；API 不可用时回退本地 */
-export async function bootstrap(fallback: Pick<StorageSnapshot, 'data'>): Promise<{
-  snapshot: StorageSnapshot
-  kind: StorageKind
-  notice?: string
-}> {
-  const remote = await readRemote()
-  if (remote.snapshot) {
-    revision = remote.revision
-    baseData = remote.snapshot.data
-    return { snapshot: remote.snapshot, kind: 'file' }
-  }
-
-  const local = readLocal()
-  if (local) {
-    if (remote.reachable) {
-      revision = remote.revision ?? '0'
-      baseData = local.data
-      const saved = await persist(local)
-      return {
-        snapshot: { data: saved.data ?? local.data, savedAt: saved.savedAt },
-        kind: saved.kind,
-        notice: saved.ok ? '已把浏览器本地数据迁移到项目文件' : saved.notice,
-      }
+function readDrafts(): [string, PendingWrite][] {
+  const drafts: [string, PendingWrite][] = []
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index)
+      if (!key?.startsWith(DRAFT_PREFIX)) continue
+      const raw = readLocal(key) as Partial<PendingWrite> | null
+      const base = validateBackup(raw?.base)
+      const snapshot = normalize(raw?.snapshot)
+      if (base.ok && snapshot) drafts.push([key, { base: base.data, snapshot }])
     }
-    revision = null
-    baseData = local.data
-    return { snapshot: local, kind: 'local', notice: '项目文件 API 不可用，已使用浏览器本地数据' }
+  } catch {
+    return drafts
   }
-
-  if (remote.reachable) {
-    revision = remote.revision ?? '0'
-    baseData = fallback.data
-  } else {
-    revision = null
-    baseData = fallback.data
-  }
-  return {
-    snapshot: { data: fallback.data },
-    kind: remote.reachable ? 'file' : 'local',
-    notice: remote.reachable ? undefined : '项目文件 API 不可用，当前使用浏览器本地存储',
-  }
+  return drafts.sort((a, b) => (a[1].snapshot.savedAt ?? '').localeCompare(b[1].snapshot.savedAt ?? ''))
 }
 
-/**
- * 写入项目文件；失败时回退浏览器本地镜像。
- * 本页请求串行执行；版本冲突时拉取最新文件并三方合并，最多重试 MAX_ATTEMPTS 次。
- */
-export function persist(snapshot: StorageSnapshot): Promise<PersistResult> {
-  const run = writeQueue.then(
-    () => persistOnce(snapshot),
-    () => persistOnce(snapshot),
-  )
-  writeQueue = run.then(
-    () => undefined,
-    () => undefined,
-  )
+function revisionFrom(response: Response): string | null {
+  return response.headers.get('etag')?.replace(/^W\//, '').replace(/^"|"$/g, '') ?? null
+}
+
+async function readRemote(): Promise<Remote> {
+  try {
+    const response = await request({ cache: 'no-store' })
+    const revision = revisionFrom(response)
+    if (!revision) return { kind: 'unavailable' }
+    if (response.status === 404 && (await response.json())?.reason === 'no-data-file') {
+      return { kind: 'missing', revision }
+    }
+    if (response.ok) {
+      const snapshot = normalize(await response.json())
+      if (snapshot) return { kind: 'file', snapshot, revision }
+    }
+  } catch {
+    return { kind: 'unavailable' }
+  }
+  return { kind: 'unavailable' }
+}
+
+function enqueue<T>(task: () => Promise<T>): Promise<T> {
+  const run = writeQueue.then(task, task)
+  writeQueue = run.catch(() => undefined)
   return run
 }
 
-async function persistOnce(snapshot: StorageSnapshot): Promise<PersistResult> {
-  let data = snapshot.data
-  let merged = false
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-    const enriched: StorageSnapshot = { data, savedAt: new Date().toISOString() }
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (revision !== null) headers['If-Match'] = `"${revision}"`
-
-    let response: Response
-    try {
-      response = await fetchWithTimeout(API, { method: 'PUT', headers, body: JSON.stringify(enriched) })
-    } catch {
-      break
-    }
-
-    if (response.ok) {
-      const body = (await response.json().catch(() => null)) as { savedAt?: string; revision?: string } | null
-      revision = revisionFrom(response) ?? body?.revision ?? revision
-      baseData = data
-      const written: StorageSnapshot = { data, savedAt: body?.savedAt ?? enriched.savedAt }
-      writeLocal(written)
-      return {
-        ok: true,
-        kind: 'file',
-        savedAt: written.savedAt,
-        notice: merged ? '检测到其他标签页的改动，已自动合并并保存' : undefined,
-        data: merged ? data : undefined,
+export function bootstrap(fallback: Pick<StorageSnapshot, 'data'>): Promise<{
+  snapshot: StorageSnapshot
+  kind: StorageKind
+  notice?: string
+  error?: boolean
+}> {
+  return enqueue(async () => {
+    remote = await readRemote()
+    const cached = readLocal(STORAGE_KEY) as { synced?: boolean } | null
+    const local = normalize(cached)
+    const drafts = readDrafts()
+    const base = remote.kind === 'file' ? remote.snapshot : local ?? fallback
+    let data = base.data
+    const legacyDraft = cached?.synced !== true && local?.savedAt && remote.kind === 'file'
+      && remote.snapshot.savedAt && local.savedAt > remote.snapshot.savedAt
+    // 旧版镜像没有基线：补回较新的资料与新增记录，无法推断离线删除。
+    if (legacyDraft) data = mergeData(fallback.data, local.data, data)
+    for (const [, draft] of drafts) data = mergeData(draft.base, draft.snapshot.data, data)
+    if (drafts.length || legacyDraft || (remote.kind === 'missing' && local)) {
+      pending = { base: remote.kind === 'missing' ? fallback.data : base.data, snapshot: { data } }
+      working = data
+      const saved = await syncPending()
+      if (saved.ok) {
+        for (const [key, draft] of drafts) {
+          // 另一页可能已经更新了该草稿，只删除本次合并的版本。
+          const current = readLocal(key) as Partial<PendingWrite> | null
+          if (current?.snapshot?.savedAt === draft.snapshot.savedAt && key !== draftKey) clearDraft(key)
+        }
       }
+      return { snapshot: { data: saved.data }, kind: saved.kind, notice: saved.notice, error: !saved.ok }
+    }
+    working = data
+    if (remote.kind === 'file') writeLocal(STORAGE_KEY, { ...remote.snapshot, synced: true })
+    return {
+      snapshot: base,
+      kind: remote.kind === 'unavailable' ? 'local' : 'file',
+      notice: remote.kind === 'unavailable' ? '项目文件暂不可用，当前使用浏览器本地存储' : undefined,
+    }
+  })
+}
+
+export function persist(snapshot: StorageSnapshot, previous: AppData, replace = false): Promise<PersistResult> {
+  return enqueue(async () => {
+    const base = working ?? previous
+    const data = replace || previous === base ? snapshot.data : mergeData(previous, snapshot.data, base)
+    const priorPending = pending
+    pending = { base: pending?.base ?? base, snapshot: { data } }
+    working = data
+    const result = await syncPending(replace)
+    if (replace && !result.ok) {
+      pending = priorPending
+      working = base
+      return { ...result, data: base }
+    }
+    return result
+  })
+}
+
+async function syncPending(replace = false): Promise<PersistResult> {
+  const draft = pending!
+  let data = draft.snapshot.data
+  let merged = false
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    if (remote.kind === 'unavailable') remote = await readRemote()
+    if (remote.kind === 'unavailable') break
+    data = draft.snapshot.data
+    if (!replace && remote.kind === 'file' && remote.snapshot.data !== draft.base) {
+      data = mergeData(draft.base, draft.snapshot.data, remote.snapshot.data)
+      merged = true
     }
 
-    if (response.status === 409) {
-      const latest = await readRemote()
-      if (!latest.snapshot) break
-      revision = latest.revision
-      data = mergeData(baseData ?? latest.snapshot.data, data, latest.snapshot.data)
-      merged = true
-      continue
+    const snapshot = { data, savedAt: new Date().toISOString() }
+    try {
+      const response = await request({
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'If-Match': `"${remote.revision}"` },
+        body: JSON.stringify(snapshot),
+      })
+      if (response.status === 409) {
+        if (replace) {
+          return { ok: false, kind: 'file', data, notice: '文件已在别处修改，请重新读取后再次恢复' }
+        }
+        remote = await readRemote()
+        continue
+      }
+      const revision = revisionFrom(response)
+      if (response.ok && revision) {
+        remote = { kind: 'file', revision, snapshot }
+        working = data
+        pending = undefined
+        writeLocal(STORAGE_KEY, { ...snapshot, synced: true })
+        clearDraft(draftKey)
+        return { ok: true, kind: 'file', data, notice: merged ? '已合并项目文件中的改动' : undefined }
+      }
+    } catch {
+      remote = { kind: 'unavailable' }
     }
     break
   }
 
-  const fallback: StorageSnapshot = { data, savedAt: new Date().toISOString() }
-  if (writeLocal(fallback)) {
-    return {
-      ok: true,
-      kind: 'local',
-      notice: merged
-        ? '数据文件同时在别处修改，改动已暂存到浏览器本地；请稍后重试'
-        : '项目文件不可用，数据已保存到浏览器本地',
-      savedAt: fallback.savedAt,
-      data: merged ? data : undefined,
-    }
+  // 草稿保留原始基线；下次读取文件时才能安全重放新增、修改和删除。
+  draftKey ??= `${DRAFT_PREFIX}${uid()}`
+  const snapshot = { data: draft.snapshot.data, savedAt: new Date().toISOString() }
+  const ok = writeLocal(draftKey, { base: draft.base, snapshot })
+  return {
+    ok,
+    kind: 'local',
+    data: working ?? draft.snapshot.data,
+    notice: ok ? '改动仅暂存在此浏览器，项目文件恢复后会尝试同步' : '保存失败，改动仍在当前页面，请重试',
   }
-  return { ok: false, kind: 'local', notice: '保存失败，请检查项目文件权限或浏览器存储空间' }
 }
 
-/** 重新读取项目文件（设置页「重新读取」） */
-export async function reloadFromFile(): Promise<StorageSnapshot | null> {
-  const remote = await readRemote()
-  if (remote.snapshot) {
-    revision = remote.revision
-    baseData = remote.snapshot.data
-  }
-  return remote.snapshot
+export function reloadFromFile(): Promise<StorageSnapshot | null> {
+  return enqueue(async () => {
+    if (pending) return null
+    const latest = await readRemote()
+    if (latest.kind !== 'file') return null
+    remote = latest
+    working = latest.snapshot.data
+    writeLocal(STORAGE_KEY, { ...latest.snapshot, synced: true })
+    return latest.snapshot
+  })
 }

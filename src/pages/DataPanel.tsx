@@ -1,30 +1,25 @@
 /**
- * [INPUT]: 依赖 ../components 的 Alert/ConfirmDialog/useToast；依赖 ../store/useStore 的 data/importPeople/restoreData；依赖 ../util/backup 的校验与读取；依赖 ../util/csv 的解析与导出；依赖 ../util/constants/format
+ * [INPUT]: 依赖 ../components 的 Alert/BackupPanel/useToast；依赖 ../store/useStore 的 data/importPeople；依赖 ../util/backup 读取 CSV 文件；依赖 ../util/csv 的解析与导出；CSV 预览按表头匹配
  * [OUTPUT]: 导出 DataPanel 组件
  * [POS]: 系统设置中的 JSON/CSV 文件面板；同名增量更新、与「我的信息」同名行自动跳过、JSON 整体恢复
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, FileJson, FileSpreadsheet, Upload } from 'lucide-react'
+import { Download, FileSpreadsheet, Upload } from 'lucide-react'
 import { Alert } from '../components/Alert'
-import { ConfirmDialog } from '../components/Modal'
+import { BackupPanel } from '../components/BackupPanel'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store/useStore'
-import { DATA_VERSION } from '../util/constants'
-import { makeBackup, readJsonFile, readTextFile, validateBackup, type ValidationResult } from '../util/backup'
+import { readTextFile } from '../util/backup'
 import { parseCsv, parsePeopleRows, peopleCsv, templateCsv, downloadText, type CsvParseOutcome } from '../util/csv'
-import { formatDate } from '../util/format'
-import { COPY } from '../util/constants'
 
 export function DataPanel() {
   const data = useStore((s) => s.data)
   const importPeople = useStore((s) => s.importPeople)
-  const restoreData = useStore((s) => s.restoreData)
   const navigate = useNavigate()
   const toast = useToast()
   const csvInput = useRef<HTMLInputElement>(null)
-  const jsonInput = useRef<HTMLInputElement>(null)
   const cancelled = useRef(false)
 
   const [outcome, setOutcome] = useState<CsvParseOutcome | null>(null)
@@ -34,11 +29,6 @@ export function DataPanel() {
   const [importing, setImporting] = useState(false)
   const [showImportLoading, setShowImportLoading] = useState(false)
   const [showParseLoading, setShowParseLoading] = useState(false)
-
-  const [backup, setBackup] = useState<Extract<ValidationResult, { ok: true }> | null>(null)
-  const [restoreError, setRestoreError] = useState('')
-  const [confirmRestore, setConfirmRestore] = useState(false)
-  const [restoring, setRestoring] = useState(false)
 
   useEffect(() => {
     if (!importing) { setShowImportLoading(false); return }
@@ -56,12 +46,6 @@ export function DataPanel() {
     toast.show('正在生成文件…')
     downloadText('linkmap-people.csv', peopleCsv(data))
     toast.show('已导出人物 CSV')
-  }
-
-  const exportJson = () => {
-    toast.show('正在生成文件…')
-    downloadText('linkmap-backup.json', JSON.stringify(makeBackup(data), null, 2), 'application/json;charset=utf-8')
-    toast.show('已导出 JSON 完整备份')
   }
 
   const handleCsvFile = async (file?: File) => {
@@ -109,108 +93,25 @@ export function DataPanel() {
     setCsvFatal([])
     await new Promise((resolve) => window.setTimeout(resolve, 0))
     const result = importPeople(importable)
+    const saved = result ? await useStore.getState().storageSettled() : undefined
     setImporting(false)
     if (!result) {
-      setCsvFatal(['写入失败，已整体回滚，原有数据未改变。请检查项目文件权限后重试。'])
+      setCsvFatal(['当前有恢复操作正在进行，请稍后重试。'])
       return
     }
-    toast.show(
-      `成功新增 ${result.added} 人，增量更新 ${result.merged} 人${selfRows.length ? `，跳过本人 ${selfRows.length} 行` : ''}`,
-    )
-    navigate('/people')
-  }
-
-  const handleJsonFile = async (file?: File) => {
-    if (!file) return
-    setBackup(null)
-    setRestoreError('')
-    try {
-      const parsed = await readJsonFile(file)
-      const checked = validateBackup(parsed)
-      if (!checked.ok) {
-        setRestoreError(checked.reason)
-        return
-      }
-      setBackup(checked)
-    } catch (error) {
-      setRestoreError(error instanceof Error ? error.message : '文件读取失败')
-    }
-  }
-
-  const doRestore = () => {
-    if (!backup) return
-    setRestoring(true)
-    const ok = restoreData(backup.data)
-    setRestoring(false)
-    setConfirmRestore(false)
-    if (!ok) {
-      setRestoreError('恢复失败，已整体回滚，原有数据未改变。请检查项目文件权限后重试。')
+    if (!saved?.ok) {
+      setOutcome(null)
       return
     }
-    toast.show(`已恢复 ${backup.data.people.length} 位联系人`)
+    if (saved.kind === 'file' && !saved.notice) {
+      toast.show(`成功新增 ${result.added} 人，增量更新 ${result.merged} 人${selfRows.length ? `，跳过本人 ${selfRows.length} 行` : ''}`)
+    }
     navigate('/people')
   }
 
   return (
     <>
-      <section className="settings-data-section">
-        <div className="settings-data-head">
-          <span className="settings-data-icon"><FileJson size={20} aria-hidden="true" /></span>
-          <div>
-            <h2>备份与恢复</h2>
-            <p className="hint">完整备份包含联系人、我的信息、分组、圈子与标签；恢复会整体替换当前数据。</p>
-          </div>
-        </div>
-
-        <div className="settings-data-row">
-          <div className="settings-data-copy">
-            <h3>导出 JSON 备份</h3>
-            <p className="hint">下载 JSON 文件，可保存到任意位置，或迁移到其他设备。</p>
-          </div>
-          <div className="settings-data-actions">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={exportJson}>
-              <Download size={16} aria-hidden="true" /> 导出 JSON
-            </button>
-          </div>
-        </div>
-
-        <div className="settings-data-row">
-          <div className="settings-data-copy">
-            <h3>从 JSON 恢复</h3>
-            <p className="hint">先校验结构与版本，确认后覆盖当前数据。</p>
-          </div>
-          <div className="settings-data-actions">
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => jsonInput.current?.click()} disabled={restoring}>
-              <Upload size={16} aria-hidden="true" /> 选择 JSON
-            </button>
-            <input
-              ref={jsonInput}
-              type="file"
-              accept=".json,application/json"
-              className="sr-only"
-              aria-label="选择 JSON 备份文件"
-              onChange={(e) => { void handleJsonFile(e.target.files?.[0]); e.target.value = '' }}
-            />
-          </div>
-        </div>
-
-        {restoreError && <Alert tone="danger">{restoreError}</Alert>}
-
-        {backup && (
-          <div className="settings-preview">
-            <p className="tabular">备份日期：{backup.exportedAt ? formatDate(backup.exportedAt) : '未提供'}</p>
-            <p className="tabular" style={{ marginTop: 4 }}>
-              {backup.data.people.length} 位联系人 · 版本 {backup.data.version}
-            </p>
-            <p className="hint" style={{ marginTop: 4 }}>校验结果：通过（当前应用版本 {DATA_VERSION}）</p>
-            <div className="row-actions" style={{ marginTop: 'var(--sp-3)' }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={exportJson}>先导出当前数据</button>
-              <button type="button" className="btn btn-danger-outline btn-sm" onClick={() => setConfirmRestore(true)}>恢复并覆盖</button>
-            </div>
-          </div>
-        )}
-      </section>
-
+      <BackupPanel />
       <section className="settings-data-section">
         <div className="settings-data-head">
           <span className="settings-data-icon"><FileSpreadsheet size={20} aria-hidden="true" /></span>
@@ -327,16 +228,6 @@ export function DataPanel() {
         )}
       </section>
 
-      <ConfirmDialog
-        open={confirmRestore}
-        title="恢复备份"
-        message={COPY.restoreDialog}
-        warning="此操作将覆盖当前全部数据，且不可撤销。"
-        confirmLabel="恢复并覆盖"
-        destructive
-        onClose={() => setConfirmRestore(false)}
-        onConfirm={doRestore}
-      />
     </>
   )
 }

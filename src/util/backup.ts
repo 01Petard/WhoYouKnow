@@ -1,11 +1,12 @@
 /**
- * [INPUT]: 依赖 ../types 的 AppData/BackupFile/Circle/Person 等；依赖 ./constants 的 DATA_VERSION；依赖浏览器 FileReader
+ * [INPUT]: 依赖 ../types 的 AppData/BackupFile/Circle/Person 等；依赖 ./constants 的 DATA_VERSION；依赖 ./id 校验上次联系日期；依赖浏览器 FileReader
  * [OUTPUT]: 导出 ValidationResult、validateBackup、makeBackup、readJsonFile、readTextFile
  * [POS]: JSON 备份的校验与序列化边界；people 只存联系人，旧 selfId 迁移为 me；旧 edges 字段与状态/方向字段忽略
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, BackupFile, Circle, Gender, Person } from '../types'
 import { DATA_VERSION } from './constants'
+import { isDateOnly } from './id'
 
 export type ValidationResult =
   | { ok: true; data: AppData; exportedAt?: string }
@@ -65,6 +66,7 @@ export function validateBackup(raw: unknown): ValidationResult {
       birthday: typeof item.birthday === 'string' ? item.birthday : undefined,
       channel: asString(item.channel),
       metAt: asString(item.metAt),
+      lastContactAt: isDateOnly(item.lastContactAt) ? item.lastContactAt : undefined,
       note: asString(item.note) || legacyNoteById.get(item.id) || '',
       tags: asStringArray(item.tags),
       groups: asStringArray(item.groups),

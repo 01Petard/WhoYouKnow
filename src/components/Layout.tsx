@@ -1,8 +1,8 @@
 /**
- * [INPUT]: 依赖 react-router-dom 的 Link/Outlet/useLocation/useNavigate；依赖 lucide-react 图标；依赖 ../store/useStore 的 storageError/storageNotice；依赖 ./Alert 与 ./Logo
+ * [INPUT]: 依赖 react-router-dom 的 Link/Outlet/useLocation/useNavigate；依赖 lucide-react 图标；依赖 ../store/useStore 的 storageSaving/storageError/storageNotice；依赖 ./Alert 与 ./Logo
  * [OUTPUT]: 导出 Layout 组件
  * [POS]: 应用外壳与主导航（侧栏 + 底部 tabbar）的唯一实现；五项导航为人脉/关系网/我的信息/整理分类/系统设置
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -35,6 +35,7 @@ function parentOf(pathname: string): string | null {
 export function Layout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const storageSaving = useStore((s) => s.storageSaving)
   const storageError = useStore((s) => s.storageError)
   const storageNotice = useStore((s) => s.storageNotice)
 
@@ -82,10 +83,14 @@ export function Layout() {
       </aside>
 
       <main className="main-area" id="main-content" tabIndex={-1}>
+        {storageSaving && (
+          <p className="hint" role="status" style={{ padding: 'var(--sp-2) var(--page-gutter) 0' }}>正在保存改动…</p>
+        )}
         {(storageError || storageNotice) && (
           <div style={{ padding: 'var(--sp-4) var(--page-gutter) 0' }}>
             <Alert tone={storageError ? 'danger' : 'info'}>
-              {storageNotice ?? '保存失败，数据未能写入本机存储。请到「系统设置」检查连接后重试。'}
+              {storageNotice ?? '保存失败，数据仍在当前页面。'}
+              {storageError && <> <Link to="/settings">前往系统设置重试</Link></>}
             </Alert>
           </div>
         )}

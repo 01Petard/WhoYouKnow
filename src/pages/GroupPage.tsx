@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 ../components 的 Modal/ConfirmDialog/EmptyState/useToast/Avatar；依赖 ../store/useStore 的 data/addToGroup/removeFromGroup；依赖 react-router-dom 的 useSearchParams
  * [OUTPUT]: 导出 GroupPage 组件
  * [POS]: 单个分组的成员管理页，负责批量加人与单人移出，分组名取自 query 参数 name；路由 /categories/groups，从 CategoriesPage 进入
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -62,7 +62,7 @@ export function GroupPage() {
       toast.show(selected.length ? '添加失败，请重试' : '未选择成员')
       return
     }
-    toast.show(`已将 ${count} 人加入「${name}」`)
+    toast.showAfterFileSave(`已将 ${count} 人加入「${name}」`)
   }
 
   if (!exists) {
@@ -199,7 +199,7 @@ export function GroupPage() {
           if (!pendingRemove) return
           if (!removeFromGroup(name, pendingRemove)) { toast.show('操作失败，请重试'); return }
           setPendingRemove(null)
-          toast.show('已移出分组')
+          toast.showAfterFileSave('已移出分组')
         }}
       />
     </div>

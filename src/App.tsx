@@ -1,8 +1,8 @@
 /**
  * [INPUT]: 依赖 react-router-dom 的 Routes/Route/Navigate；依赖 ./store/useStore 的 data/hydrated/hydrate；依赖 ./components/Layout 与 ./pages 下页面组件
  * [OUTPUT]: 默认导出 App，负责启动加载、当前用户门禁与全部路由的装配
- * [POS]: 路由表与 self 门禁的唯一来源；未选择当前用户时只渲染 SelfSetupPage，页面组件不自行注册路由
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [POS]: 装配路由与启动恢复；连接恢复时触发同步，未保存时保护页面退出。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
@@ -23,6 +23,25 @@ export default function App() {
   const data = useStore((s) => s.data)
   const hydrated = useStore((s) => s.hydrated)
   const hydrate = useStore((s) => s.hydrate)
+
+  useEffect(() => {
+    const reconnect = () => {
+      const state = useStore.getState()
+      if (state.hydrated && (state.storageKind === 'local' || state.storageError)) void state.storageSaveNow()
+    }
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const state = useStore.getState()
+      if (!state.storageSaving && !state.storageError) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('online', reconnect)
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => {
+      window.removeEventListener('online', reconnect)
+      window.removeEventListener('beforeunload', beforeUnload)
+    }
+  }, [])
 
   useEffect(() => {
     void hydrate()

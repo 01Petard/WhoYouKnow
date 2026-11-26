@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 react 的 hooks 与指针事件类型；依赖 lucide-react 的 Maximize2/Minimize2；依赖 ../types 的 Person/Circle
  * [OUTPUT]: 导出 NetworkGraph 组件
  * [POS]: 关系网的唯一渲染器；以独立于 people 的「我」为中心，按分组/圈子/标签把联系人排成可缩放地图；同一人可多簇；支持全屏
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
@@ -167,6 +167,8 @@ export function NetworkGraph({ people, me, groups, circles, tags, clusterBy, foc
   const svgRef = useRef<SVGSVGElement | null>(null)
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const panning = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null)
+  // 只有超过拖动阈值或进入双指操作时才捕获指针。
+  const dragged = useRef(false)
   const pinch = useRef<{ dist: number; k: number } | null>(null)
   const [view, setView] = useState({ x: 0, y: 0, k: 1 })
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -192,12 +194,8 @@ export function NetworkGraph({ people, me, groups, circles, tags, clusterBy, foc
   )
 
   const toViewBox = (clientX: number, clientY: number) => {
-    const rect = svgRef.current?.getBoundingClientRect()
-    if (!rect) return { x: 0, y: 0 }
-    return {
-      x: ((clientX - rect.left) / rect.width) * extent * 2 + (CENTER - extent),
-      y: ((clientY - rect.top) / rect.height) * extent * 2 + (CENTER - extent),
-    }
+    const matrix = svgRef.current?.getScreenCTM()
+    return matrix ? new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse()) : { x: 0, y: 0 }
   }
 
   const zoomAt = (factor: number, point: { x: number; y: number }) => {
@@ -220,46 +218,54 @@ export function NetworkGraph({ people, me, groups, circles, tags, clusterBy, foc
   }
 
   const startPan = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (event.button !== 0) return
-    const point = toViewBox(event.clientX, event.clientY)
-    pointers.current.set(event.pointerId, point)
-    panning.current = { startX: event.clientX, startY: event.clientY, originX: view.x, originY: view.y }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    if (event.button !== 0 || pointers.current.size >= 2) return
+    const { pointerId, clientX, clientY, currentTarget } = event
+    pointers.current.set(pointerId, { x: clientX, y: clientY })
+    if (pointers.current.size === 1) {
+      dragged.current = false
+      panning.current = { startX: clientX, startY: clientY, originX: view.x, originY: view.y }
+      return
+    }
+    dragged.current = true
+    const [a, b] = [...pointers.current.values()]
+    pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), k: view.k }
+    for (const id of pointers.current.keys()) currentTarget.setPointerCapture(id)
   }
 
   const move = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (pointers.current.size === 2) {
-      pointers.current.set(event.pointerId, toViewBox(event.clientX, event.clientY))
+    const { pointerId, clientX, clientY, currentTarget } = event
+    if (!pointers.current.has(pointerId)) return
+    pointers.current.set(pointerId, { x: clientX, y: clientY })
+    if (pinch.current) {
       const [a, b] = [...pointers.current.values()]
       const dist = Math.hypot(a.x - b.x, a.y - b.y)
-      if (!pinch.current) {
-        pinch.current = { dist, k: view.k }
-      } else if (dist > 0) {
-        const factor = dist / pinch.current.dist
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-        setView((current) => {
-          const k = Math.min(4, Math.max(0.35, pinch.current!.k * factor))
-          const ratio = k / current.k
-          return { k, x: mid.x - (mid.x - current.x) * ratio, y: mid.y - (mid.y - current.y) * ratio }
-        })
-      }
+      const initial = pinch.current
+      if (dist === 0 || initial.dist === 0) return
+      const mid = toViewBox((a.x + b.x) / 2, (a.y + b.y) / 2)
+      setView((current) => {
+        const k = Math.min(4, Math.max(0.35, initial.k * dist / initial.dist))
+        const ratio = k / current.k
+        return { k, x: mid.x - (mid.x - current.x) * ratio, y: mid.y - (mid.y - current.y) * ratio }
+      })
       return
     }
-    if (!panning.current) return
-    const rect = svgRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const unit = (extent * 2) / rect.width
-    setView((current) => ({
-      ...current,
-      x: panning.current!.originX + (event.clientX - panning.current!.startX) * unit,
-      y: panning.current!.originY + (event.clientY - panning.current!.startY) * unit,
-    }))
+    const pan = panning.current
+    if (!pan) return
+    if (!dragged.current) {
+      if (Math.hypot(clientX - pan.startX, clientY - pan.startY) < 5) return
+      dragged.current = true
+      currentTarget.setPointerCapture(pointerId)
+    }
+    const start = toViewBox(pan.startX, pan.startY)
+    const current = toViewBox(clientX, clientY)
+    setView((previous) => ({ ...previous, x: pan.originX + current.x - start.x, y: pan.originY + current.y - start.y }))
   }
 
   const end = (event: ReactPointerEvent<SVGSVGElement>) => {
-    pointers.current.delete(event.pointerId)
-    if (pointers.current.size < 2) pinch.current = null
-    if (pointers.current.size === 0) panning.current = null
+    if (!pointers.current.delete(event.pointerId)) return
+    pinch.current = null
+    const remaining = pointers.current.values().next().value
+    panning.current = remaining ? { startX: remaining.x, startY: remaining.y, originX: view.x, originY: view.y } : null
   }
 
   return (
@@ -274,6 +280,9 @@ export function NetworkGraph({ people, me, groups, circles, tags, clusterBy, foc
         onPointerMove={move}
         onPointerUp={end}
         onPointerCancel={end}
+        onPointerLeave={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) end(event)
+        }}
         onWheel={(event) => {
           // 非全屏时把滚轮留给页面滚动；只有全屏才缩放地图
           if (!isFullscreen) return
@@ -281,7 +290,7 @@ export function NetworkGraph({ people, me, groups, circles, tags, clusterBy, foc
           zoomAt(event.deltaY < 0 ? 1.12 : 0.89, toViewBox(event.clientX, event.clientY))
         }}
         onClick={(event) => {
-          if (event.target === event.currentTarget) onFocus(null)
+          if (!dragged.current && event.target === event.currentTarget) onFocus(null)
         }}
       >
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
@@ -335,7 +344,7 @@ export function NetworkGraph({ people, me, groups, circles, tags, clusterBy, foc
                   onPointerLeave={() => setHoverId(null)}
                   onClick={(event) => {
                     event.stopPropagation()
-                    onFocus(isFocus ? null : person.id)
+                    if (!dragged.current || event.detail === 0) onFocus(isFocus ? null : person.id)
                   }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {

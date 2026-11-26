@@ -1,8 +1,8 @@
 /**
  * [INPUT]: 依赖 react 的 useMemo；依赖 react-router-dom 的 useNavigate；依赖 lucide-react 的 Search/X；依赖 ../components 的 EmptyState/FacetFilters/PersonCard；依赖 ../store/useStore 的 data/ui/setUi；依赖 ../util/constants 的 COPY；依赖 ../util/contactIndex 的 groupContacts；依赖 ../util/queries 的 filterPeople
  * [OUTPUT]: 导出 PeoplePage 组件
- * [POS]: 全量人脉页；按拼音首字母分组、网格布局，多行分面筛选支持维度内多选；路由 /people
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [POS]: 全量人脉页；按拼音首字母分组、网格布局，提供重要与待联系视图及多选筛选；路由 /people
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -11,9 +11,15 @@ import { EmptyState } from '../components/EmptyState'
 import { FacetFilters } from '../components/FacetFilters'
 import { PersonCard } from '../components/PersonCard'
 import { useStore } from '../store/useStore'
-import { COPY, UNCLASSIFIED } from '../util/constants'
+import { COPY, FOLLOW_UP_DAYS, UNCLASSIFIED } from '../util/constants'
 import { groupContacts } from '../util/contactIndex'
 import { filterPeople } from '../util/queries'
+
+const peopleViews = [
+  { key: 'all', label: '全部' },
+  { key: 'important', label: '重要' },
+  { key: 'followUp', label: '待联系' },
+] as const
 
 export function PeoplePage() {
   const data = useStore((s) => s.data)
@@ -24,8 +30,8 @@ export function PeoplePage() {
   const filter = ui.peopleFilter
 
   const people = useMemo(
-    () => filterPeople(data, { search: ui.peopleSearch, ...filter }),
-    [data, ui.peopleSearch, filter],
+    () => filterPeople(data, { search: ui.peopleSearch, view: ui.peopleView, ...filter }),
+    [data, ui.peopleSearch, ui.peopleView, filter],
   )
   const groups = useMemo(() => groupContacts(people), [people])
 
@@ -34,7 +40,7 @@ export function PeoplePage() {
     setUi({ peopleFilter: { ...filter, [key]: values } })
   }
 
-  const clearFilter = () => setUi({ peopleFilter: { groups: [], circles: [], tags: [] } })
+  const clearFilter = () => setUi({ peopleView: 'all', peopleFilter: { groups: [], circles: [], tags: [] } })
 
   return (
     <div className="content">
@@ -64,6 +70,25 @@ export function PeoplePage() {
           </button>
         )}
       </div>
+
+      <div className="segmented" role="group" aria-label="联系人视图" style={{ marginBottom: 'var(--sp-3)' }}>
+        {peopleViews.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            className={`segmented-item${ui.peopleView === key ? ' segmented-item-active' : ''}`}
+            aria-pressed={ui.peopleView === key}
+            onClick={() => setUi({ peopleView: key })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {ui.peopleView === 'followUp' && (
+        <p className="hint" style={{ marginBottom: 'var(--sp-3)' }}>
+          无联系记录或已满 {FOLLOW_UP_DAYS} 天未联系的重要联系人。
+        </p>
+      )}
 
       <FacetFilters
         facets={[
@@ -110,7 +135,7 @@ export function PeoplePage() {
           <EmptyState title={COPY.emptySearch} />
         ) : (
           <EmptyState
-            title={COPY.emptyFilter}
+            title={ui.peopleView === 'followUp' ? '当前筛选下没有待联系的人' : COPY.emptyFilter}
             actionLabel={COPY.actionClearFilter}
             onAction={clearFilter}
           />

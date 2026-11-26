@@ -2,15 +2,43 @@
  * [INPUT]: 依赖 ../types 的 AppData/Circle/Person
  * [OUTPUT]: 导出 mergeData，用于多标签页写入冲突时的三方合并
  * [POS]: 存储层的纯函数边界；base=本页最后同步的版本，local=本页当前数据，remote=数据文件中的最新数据。
- *        同一实体两侧都改时按 updatedAt 取新；一侧删除、另一侧未改则删除生效；两侧都改则保留改动。
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ *        同一实体按字段合并，同一字段冲突按 updatedAt 取新；一侧删除、另一侧未改则删除生效；两侧都改则保留改动。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, Circle, Person } from '../types'
 
-const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((value, index) => same(value, b[index]))
+  }
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) || Array.isArray(b)) return false
+  const left = a as Record<string, unknown>
+  const right = b as Record<string, unknown>
+  return [...new Set([...Object.keys(left), ...Object.keys(right)])].every((key) => same(left[key], right[key]))
+}
 
 function later<T extends { updatedAt: string }>(local: T, remote: T): T {
   return local.updatedAt >= remote.updatedAt ? local : remote
+}
+
+function mergeRecord<T extends { updatedAt: string }>(base: T | undefined, local: T, remote: T): T {
+  if (same(local, base)) return remote
+  if (same(remote, base)) return local
+  const latest = later(local, remote)
+  if (!base) return latest
+  const keys = [...new Set([...Object.keys(local), ...Object.keys(remote)])] as (keyof T)[]
+  return Object.fromEntries(keys.map((key) => {
+    const before = base[key]
+    const mine = local[key]
+    const theirs = remote[key]
+    if (same(mine, before)) return [key, theirs]
+    if (same(theirs, before)) return [key, mine]
+    if ((key === 'groups' || key === 'tags') && Array.isArray(before) && Array.isArray(mine) && Array.isArray(theirs)) {
+      return [key, mergeNames(before, mine, theirs)]
+    }
+    return [key, latest[key]]
+  })) as T
 }
 
 /**
@@ -34,9 +62,7 @@ function mergeRecords<T extends { id: string; updatedAt: string }>(
     const theirs = remoteMap.get(id)
 
     if (mine && theirs) {
-      if (same(mine, before)) chosen.set(id, theirs)
-      else if (same(theirs, before)) chosen.set(id, mine)
-      else chosen.set(id, later(mine, theirs))
+      chosen.set(id, mergeRecord(before, mine, theirs))
       continue
     }
     if (mine) {
@@ -52,7 +78,10 @@ function mergeRecords<T extends { id: string; updatedAt: string }>(
 
   const result: T[] = []
   const seen = new Set<string>()
-  for (const item of [...local, ...remote]) {
+  const localOrder = local.map((item) => item.id)
+  const baseOrder = base.map((item) => item.id)
+  const ordered = same(localOrder, baseOrder) ? [...remote, ...local] : [...local, ...remote]
+  for (const item of ordered) {
     const picked = chosen.get(item.id)
     if (!picked || seen.has(item.id)) continue
     seen.add(item.id)
@@ -63,23 +92,17 @@ function mergeRecords<T extends { id: string; updatedAt: string }>(
 
 /** 词表按集合三方合并：任一侧删除的项移除，两侧新增的项都保留，顺序以 local 为主 */
 function mergeNames(base: string[], local: string[], remote: string[]): string[] {
-  const removed = new Set([
-    ...base.filter((name) => !local.includes(name)),
-    ...base.filter((name) => !remote.includes(name)),
-  ])
-  const result: string[] = []
-  for (const name of [...local, ...remote]) {
-    if (removed.has(name) || result.includes(name)) continue
-    result.push(name)
-  }
-  return result
+  if (same(local, base)) return remote
+  if (same(remote, base)) return local
+  const mine = new Set(local)
+  const theirs = new Set(remote)
+  const removed = new Set(base.filter((name) => !mine.has(name) || !theirs.has(name)))
+  return [...new Set([...local, ...remote])].filter((name) => !removed.has(name))
 }
 
 function mergeMe(base: Person | null, local: Person | null, remote: Person | null): Person | null {
   if (local && remote) {
-    if (same(local, base)) return remote
-    if (same(remote, base)) return local
-    return later(local, remote)
+    return local.id === remote.id ? mergeRecord(base?.id === local.id ? base : undefined, local, remote) : later(local, remote)
   }
   if (local) {
     if (!base || !same(local, base)) return local

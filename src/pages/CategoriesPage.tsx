@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 react 的 useState/DragEvent；依赖 lucide-react 图标；依赖 ../components 的 CircleEditor/ConfirmDialog/Modal/useToast；依赖 ../store/useStore 的标签/分组/圈子增删改与排序动作；依赖 ../util/queries 的 circleMembers
  * [OUTPUT]: 导出 CategoriesPage 组件
  * [POS]: 「整理分类」页面；标签、分组、圈子三栏并列，支持按钮排序与拖拽排序，减少页面跳转与留白
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useState, type DragEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -59,7 +59,7 @@ export function CategoriesPage() {
       ? editor.mode === 'add' ? addTag(value) : renameTag(editor.original ?? '', value)
       : editor.mode === 'add' ? addGroup(value) : renameGroup(editor.original ?? '', value)
     if (!ok) { toast.show('名称为空或已存在'); return }
-    toast.show(editor.mode === 'add' ? '已新增' : '已重命名')
+    toast.showAfterFileSave(editor.mode === 'add' ? '已新增' : '已重命名')
     setEditor(null)
   }
 
@@ -67,11 +67,11 @@ export function CategoriesPage() {
     if (!removing) return
     if (removing.kind === 'circle') {
       if (!removeCircle(removing.value)) { toast.show('删除失败，请重试'); return }
-      toast.show('已删除圈子，分组与人物未受影响')
+      toast.showAfterFileSave('已删除圈子，分组与人物未受影响')
     } else {
       const affected = removing.kind === 'tag' ? removeTag(removing.value) : removeGroup(removing.value)
       if (affected < 0) { toast.show('删除失败，请重试'); return }
-      toast.show(`已删除「${removing.label}」，${affected} 人受影响，人物未删除`)
+      toast.showAfterFileSave(`已删除「${removing.label}」，${affected} 人受影响，人物未删除`)
     }
     setRemoving(null)
   }
@@ -202,7 +202,7 @@ export function CategoriesPage() {
                     label="加入分组…"
                     options={data.groups}
                     onSelect={(group) => {
-                      if (addToGroup(group, [person.id]) > 0) toast.show(`已将 ${person.name} 加入「${group}」`)
+                      if (addToGroup(group, [person.id]) > 0) toast.showAfterFileSave(`已将 ${person.name} 加入「${group}」`)
                       else toast.show('加入失败，请重试')
                     }}
                   />
@@ -227,7 +227,7 @@ export function CategoriesPage() {
                     label="添加标签…"
                     options={data.tags}
                     onSelect={(tag) => {
-                      if (addTagToPerson(tag, person.id)) toast.show(`已给 ${person.name} 添加标签「${tag}」`)
+                      if (addTagToPerson(tag, person.id)) toast.showAfterFileSave(`已给 ${person.name} 添加标签「${tag}」`)
                       else toast.show('添加失败，请重试')
                     }}
                   />

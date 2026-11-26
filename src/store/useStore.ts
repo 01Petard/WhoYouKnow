@@ -1,8 +1,8 @@
 /**
  * [INPUT]: 依赖 zustand 的 create；依赖 ../types 全部领域类型；依赖 ../util/constants 的 DATA_VERSION；依赖 ../util/id 的 today/uid；依赖 ../util/csv 的 ParsedCsvRow；依赖 ../util/storage 的 bootstrap/persist/reloadFromFile
  * [OUTPUT]: 导出 useStore、UiState、emptyData，并再导出 today
- * [POS]: 全局唯一的状态与写入口；people 只存联系人，me 单独管理；所有写先更新内存，再经项目文件串行落盘
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [POS]: 管理联系人和我的资料；常规改动即时更新界面，备份恢复等待持久化。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { create } from 'zustand'
 import {
@@ -10,22 +10,25 @@ import {
   type Circle,
   type FilterState,
   type Person,
+  type PeopleView,
   type PersonInput,
   type StorageKind,
 } from '../types'
 import { DATA_VERSION } from '../util/constants'
-import { today, uid } from '../util/id'
+import { isDateOnly, today, uid } from '../util/id'
 import type { ParsedCsvRow } from '../util/csv'
-import { bootstrap, persist, reloadFromFile } from '../util/storage'
+import { bootstrap, persist, reloadFromFile, type PersistResult } from '../util/storage'
 
 export interface UiState {
   peopleSearch: string
+  peopleView: PeopleView
   peopleFilter: FilterState
   networkSearch: string
 }
 
 const initialUi: UiState = {
   peopleSearch: '',
+  peopleView: 'all',
   peopleFilter: { groups: [], circles: [], tags: [] },
   networkSearch: '',
 }
@@ -93,6 +96,8 @@ function makePerson(input: PersonInput): Person {
 interface Store extends Persisted {
   ui: UiState
   storageError: boolean
+  storageSaving: boolean
+  storageSettled: () => Promise<PersistResult | undefined>
   /** 启动加载是否完成：未完成前页面显示加载态，避免异步加载与操作竞态 */
   hydrated: boolean
   /** 当前生效的存储方式：项目文件或浏览器本地回退 */
@@ -102,10 +107,10 @@ interface Store extends Persisted {
   /** 启动：读取项目数据文件；可被多次调用 */
   hydrate: () => Promise<void>
   /** 立即把当前内存数据写入项目文件 */
-  storageSaveNow: () => Promise<boolean>
+  storageSaveNow: () => Promise<PersistResult>
   /** 重新读取项目数据文件并替换当前内存数据 */
   storageReload: () => Promise<boolean>
-  /** 所有写操作内存即时更新、后台串行落盘；全部后端写入失败时返回 false */
+  /** 常规操作返回是否接受修改；持久化结果通过 storageSettled 读取 */
   addPerson: (input: PersonInput) => boolean
   updatePerson: (id: string, input: PersonInput) => boolean
   deletePerson: (id: string) => boolean
@@ -115,6 +120,7 @@ interface Store extends Persisted {
   updateMe: (input: PersonInput) => boolean
   /** 把一位已有联系人迁移成「我」：从 people 移除，并清理涉及 TA 的关系边 */
   adoptAsMe: (personId: string) => boolean
+  setLastContact: (id: string, date?: string) => boolean
   setImportance: (id: string, important: boolean) => boolean
   addTag: (name: string) => boolean
   renameTag: (oldName: string, newName: string) => boolean
@@ -144,7 +150,7 @@ interface Store extends Persisted {
   reorderCircles: (ids: string[]) => boolean
   /** 按姓名导入：新姓名新增；同名增量更新；与「我的信息」同名的行自动跳过 */
   importPeople: (rows: ParsedCsvRow[]) => { added: number; merged: number; skippedSelf: number } | null
-  restoreData: (data: AppData) => boolean
+  restoreData: (data: AppData) => Promise<PersistResult | undefined>
   resetData: () => boolean
   setUi: (patch: Partial<UiState>) => void
   resetUi: () => void
@@ -152,28 +158,38 @@ interface Store extends Persisted {
 
 export const useStore = create<Store>((set, get) => {
   let commitSeq = 0
+  let save: Promise<PersistResult> | undefined
+  let hydration: Promise<void> | undefined
+  let restoring = false
 
-  /**
-   * 提交：内存即时更新，后台串行写入项目数据文件。
-   * 写入全部失败时返回 false 并保持 storageError，供页面提示重试。
-   */
-  function commit(patch: Partial<Persisted>): boolean {
-    const state = get()
-    const nextData = patch.data ?? state.data
-    const snapshot: Persisted = { data: nextData }
+  function saveData(nextData: AppData, replace = false): Promise<PersistResult> {
+    const prior = get()
+    const previous = prior.data
     const seq = ++commitSeq
-    set({ data: nextData, storageError: false })
-    void persist(snapshot).then((result) => {
-      // 只处理最后一次提交的结果，避免旧的失败覆盖新的成功状态
-      if (seq !== commitSeq) return
-      set({
-        // 写入时与其它标签页合并过，采用合并结果，避免两边分叉
-        ...(result.data ? { data: result.data } : {}),
-        storageError: !result.ok,
-        storageNotice: result.notice,
-        storageKind: result.kind,
-      })
+    set({
+      ...(replace ? {} : { data: nextData }),
+      storageSaving: true,
+      storageError: false,
+      storageNotice: undefined,
     })
+    save = persist({ data: nextData }, previous, replace).then((result) => {
+      if (seq === commitSeq) {
+        set({
+          data: result.data,
+          storageSaving: false,
+          storageError: replace && !result.ok ? prior.storageError : !result.ok,
+          storageNotice: replace && !result.ok ? prior.storageNotice : result.notice,
+          storageKind: replace && !result.ok ? prior.storageKind : result.kind,
+        })
+      }
+      return result
+    })
+    return save
+  }
+
+  function commit(patch: Partial<Persisted>): boolean {
+    if (restoring) return false
+    void saveData(patch.data ?? get().data)
     return true
   }
 
@@ -181,34 +197,35 @@ export const useStore = create<Store>((set, get) => {
     data: emptyData(),
     ui: initialUi,
     storageError: false,
+    storageSaving: false,
     hydrated: false,
     storageKind: 'file',
+    storageSettled: async () => save,
 
-    async hydrate() {
-      const result = await bootstrap({ data: get().data })
-      set({
-        data: result.snapshot.data,
-        storageKind: result.kind,
-        storageNotice: result.notice,
-        hydrated: true,
+    hydrate() {
+      hydration ??= bootstrap({ data: get().data }).then((result) => {
+        set({
+          data: result.snapshot.data,
+          storageKind: result.kind,
+          storageNotice: result.notice,
+          storageError: result.error ?? false,
+          hydrated: true,
+        })
       })
+      return hydration
     },
 
-    async storageSaveNow() {
-      const result = await persist({ data: get().data })
-      set({
-        ...(result.data ? { data: result.data } : {}),
-        storageError: !result.ok,
-        storageKind: result.kind,
-        storageNotice: result.notice,
-      })
-      return result.ok
+    storageSaveNow() {
+      return restoring && save ? save : saveData(get().data)
     },
 
     async storageReload() {
+      if (get().storageSaving) return false
+      const seq = commitSeq
       const snapshot = await reloadFromFile()
+      if (seq !== commitSeq) return false
       if (!snapshot) {
-        set({ storageNotice: '项目数据文件不存在或格式错误' })
+        if (!get().storageNotice) set({ storageNotice: '暂时无法重新读取项目文件' })
         return false
       }
       set({
@@ -241,6 +258,7 @@ export const useStore = create<Store>((set, get) => {
         ...person,
         id,
         important: previous?.important,
+        lastContactAt: previous?.lastContactAt,
         createdAt: previous?.createdAt ?? person.createdAt,
       }
       return commit({
@@ -291,6 +309,22 @@ export const useStore = create<Store>((set, get) => {
           ...data,
           me: person,
           people: data.people.filter((p) => p.id !== personId),
+        },
+      })
+    },
+
+    setLastContact(id, date) {
+      if (date !== undefined && (!isDateOnly(date) || date > today())) return false
+      const data = get().data
+      const person = data.people.find((item) => item.id === id)
+      if (!person) return false
+      if (person.lastContactAt === date) return true
+      return commit({
+        data: {
+          ...data,
+          people: data.people.map((item) =>
+            item.id === id ? { ...item, lastContactAt: date, updatedAt: nowIso() } : item,
+          ),
         },
       })
     },
@@ -590,8 +624,15 @@ export const useStore = create<Store>((set, get) => {
       return ok ? { added, merged, skippedSelf } : null
     },
 
-    restoreData(data) {
-      return commit({ data })
+    async restoreData(data) {
+      if (restoring) return
+      restoring = true
+      try {
+        if (save) await save
+        return await saveData(data, true)
+      } finally {
+        restoring = false
+      }
     },
 
     resetData() {

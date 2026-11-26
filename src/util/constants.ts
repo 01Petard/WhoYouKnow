@@ -1,8 +1,8 @@
 /**
  * [INPUT]: 不导入任何模块；集中声明本地存储键、数据版本、阈值与中文文案
- * [OUTPUT]: 导出 STORAGE_KEY、DATA_VERSION、DATA_FILE_PATH、UNCLASSIFIED、BULK_SOFT_LIMIT、TOAST_MS/TOAST_UNDO_MS、COPY、CSV_TEMPLATE_HEADERS
+ * [OUTPUT]: 导出 STORAGE_KEY、DATA_VERSION、DATA_FILE_PATH、UNCLASSIFIED、BULK_SOFT_LIMIT/FOLLOW_UP_DAYS、TOAST_MS/TOAST_UNDO_MS、COPY、CSV_TEMPLATE_HEADERS
  * [POS]: 全局常量与界面文案的唯一来源；store、util、components、pages 都从此取值，禁止另写魔数或重复文案
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 export const STORAGE_KEY = 'linkmap.data.v1'
 // 保持 v1：me 为纯增量可选字段；旧数据用 selfId 迁移出 me，避免版本不兼容导致的数据丢失
@@ -15,6 +15,7 @@ export const DATA_FILE_PATH = 'data/linkmap.json'
 export const UNCLASSIFIED = '__unclassified__'
 
 export const BULK_SOFT_LIMIT = 50
+export const FOLLOW_UP_DAYS = 30
 
 export const TOAST_MS = 3000
 export const TOAST_UNDO_MS = 5000
@@ -34,5 +35,5 @@ export const COPY = {
 } as const
 
 // CSV 第 3 列表头为「分组」：导入导出只涉及分组这一整理维度；
-// 圈子是分组之上的归类视图，由分组派生，不进入 CSV。导入按列位置读取（见 csv.ts），旧表头「圈子」的文件仍可正常导入
+// 圈子是分组之上的归类视图，由分组派生，不进入 CSV。导入按表头读取；旧表头「圈子」按分组兼容。
 export const CSV_TEMPLATE_HEADERS = ['姓名', '标签', '分组', '备注', '生日'] as const

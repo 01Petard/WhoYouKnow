@@ -1,8 +1,8 @@
 /**
  * [INPUT]: 依赖 ../types 的 Person；依赖 ./constants 的 CSV_TEMPLATE_HEADERS
  * [OUTPUT]: 导出 parseCsv、toCsv、downloadText、splitMulti、ParsedCsvRow、CsvParseOutcome、parsePeopleCsv、parsePeopleRows、peopleCsv、templateCsv
- * [POS]: CSV 编解码的唯一实现；只处理人物与分组，不读写圈子；关系边仅进入 JSON 备份
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [POS]: CSV 编解码的唯一实现；按表头读取联系人和分类，兼容旧模板的「圈子」表头
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { Person } from '../types'
 import { CSV_TEMPLATE_HEADERS } from './constants'
@@ -112,17 +112,25 @@ export function parsePeopleRows(rows: string[][], existing: Person[]): CsvParseO
     return { rows: [], errors: [{ row: 0, reason: '文件为空' }], totalLines: 0 }
   }
 
-  const header = rows[0].map((h) => h.replace(/^\uFEFF/, '').trim())
-  if (header[0] !== CSV_TEMPLATE_HEADERS[0]) {
-    return { rows: [], errors: [{ row: 1, reason: '首列必须是「姓名」，请下载模板后填写' }], totalLines: rows.length - 1 }
-  }
+  const header = rows[0].map((cell) => cell.trim())
+  const columns = new Map<string, number>()
+  const known: ReadonlySet<string> = new Set(CSV_TEMPLATE_HEADERS)
+  header.forEach((label, index) => {
+    const field = label === '圈子' && !header.includes('分组') ? '分组' : label
+    if (!known.has(field)) return
+    if (columns.has(field)) errors.push({ row: 1, reason: `「${field}」列重复` })
+    columns.set(field, index)
+  })
+  if (!columns.has('姓名')) errors.push({ row: 1, reason: '缺少「姓名」列，请下载模板后填写' })
+  if (errors.length) return { rows: [], errors, totalLines: rows.length - 1 }
 
   const seen = new Map<string, string>()
   for (const person of existing) seen.set(person.name.trim(), person.id)
 
   rows.slice(1).forEach((cells, index) => {
     const rowNumber = index + 2
-    const name = (cells[0] ?? '').trim()
+    const value = (field: string) => cells[columns.get(field) ?? -1]?.trim() ?? ''
+    const name = value('姓名')
     if (!name) {
       errors.push({ row: rowNumber, reason: '姓名为空' })
       return
@@ -131,10 +139,10 @@ export function parsePeopleRows(rows: string[][], existing: Person[]): CsvParseO
     parsed.push({
       rowNumber,
       name,
-      tags: splitMulti(cells[1] ?? ''),
-      groups: splitMulti(cells[2] ?? ''),
-      note: (cells[3] ?? '').trim(),
-      birthday: (cells[4] ?? '').trim(),
+      tags: splitMulti(value('标签')),
+      groups: splitMulti(value('分组')),
+      note: value('备注'),
+      birthday: value('生日'),
       duplicateWith,
     })
     seen.set(name, `csv:${rowNumber}`)

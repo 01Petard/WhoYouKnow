@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 ../components 的 CircleEditor/ConfirmDialog/EmptyState/useToast/Avatar；依赖 ../store/useStore 的 data/removeCircle；依赖 ../util/queries 的 circleMembers；依赖 react-router-dom 的 useParams
  * [OUTPUT]: 导出 CircleDetailPage 组件
  * [POS]: 单个圈子的成员视图与编辑/删除入口；成员全由 circleMembers 从分组派生，路由 /categories/circles/:id，从 CategoriesPage 进入
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -133,7 +133,7 @@ export function CircleDetailPage() {
             toast.show('删除失败，请重试')
             return
           }
-          toast.show(`已删除圈子「${circle.name}」`)
+          toast.showAfterFileSave(`已删除圈子「${circle.name}」`)
           navigate('/categories', { replace: true })
         }}
       />

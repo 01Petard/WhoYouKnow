@@ -1,11 +1,13 @@
 /**
- * [INPUT]: 依赖 react 的 useMemo/useState；依赖 lucide-react 的 Check/Search；依赖 ../components 的 Avatar/useToast；依赖 ../store/useStore 的 data/adoptAsMe/createMe；依赖 ../util/constants 的 COPY
+ * [INPUT]: 依赖 react 的 useMemo/useState；依赖 lucide-react 的 Check/Search；依赖 ../components 的 Avatar/Alert/BackupPanel/useToast；依赖 ../store/useStore 的 data/adoptAsMe/createMe；依赖 ../util/constants 的 COPY
  * [OUTPUT]: 导出 SelfSetupPage 组件
- * [POS]: 未创建「我的信息」时的唯一入口；可把已有联系人迁移成我，或直接创建我的资料，完成后应用才挂载主路由
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [POS]: 未创建「我的信息」时的唯一入口；可把已有联系人迁移成我，或直接创建我的资料，也可从完整备份迁移，恢复成功后进入主路由
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
 import { Check, Search } from 'lucide-react'
+import { Alert } from '../components/Alert'
+import { BackupPanel } from '../components/BackupPanel'
 import { Avatar } from '../components/PersonCard'
 import { Logo } from '../components/Logo'
 import { useToast } from '../components/Toast'
@@ -17,6 +19,9 @@ export function SelfSetupPage() {
   const createMe = useStore((s) => s.createMe)
   const adoptAsMe = useStore((s) => s.adoptAsMe)
   const toast = useToast()
+  const saving = useStore((state) => state.storageSaving)
+  const storageNotice = useStore((state) => state.storageNotice)
+  const storageError = useStore((state) => state.storageError)
   const [selected, setSelected] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [name, setName] = useState('')
@@ -35,7 +40,7 @@ export function SelfSetupPage() {
 
   const create = () => {
     const clean = name.trim()
-    if (!clean) return
+    if (!clean || saving) return
     if (!createMe({ name: clean })) {
       toast.show('保存失败，请重试')
     }
@@ -92,7 +97,7 @@ export function SelfSetupPage() {
               type="button"
               className="btn btn-primary btn-block"
               style={{ marginTop: 'var(--sp-3)' }}
-              disabled={!selected}
+              disabled={!selected || saving}
               onClick={start}
             >
               {selected ? `以「${data.people.find((p) => p.id === selected)?.name ?? ''}」的身份开始` : '请选择或创建你自己'}
@@ -112,9 +117,12 @@ export function SelfSetupPage() {
             onKeyDown={(e) => { if (e.key === 'Enter') create() }}
           />
         </div>
-        <button type="button" className="btn btn-secondary btn-block" disabled={!name.trim()} onClick={create}>
+        <button type="button" className="btn btn-secondary btn-block" disabled={!name.trim() || saving} onClick={create}>
           创建我的信息
         </button>
+        <div className="split-line" />
+        {storageNotice && <Alert tone={storageError ? 'danger' : 'info'}>{storageNotice}</Alert>}
+        <BackupPanel setup />
       </div>
     </div>
   )

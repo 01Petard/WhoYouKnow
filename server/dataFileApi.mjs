@@ -3,7 +3,7 @@
  * [OUTPUT]: 导出 createDataFileApi，提供 /api/config 与 /api/data 的 GET/PUT/DELETE
  * [POS]: Vite 开发/预览插件与 server.mjs 共用的数据文件 API；两处入口只做转发，避免实现漂移。
  *        同一进程内写请求串行执行；跨进程用 `.lock` 文件互斥；If-Match 做乐观并发校验。
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
@@ -92,7 +92,8 @@ export function createDataFileApi(options = {}) {
     try {
       const buffer = await fs.readFile(dataFile)
       return { exists: true, buffer, revision: revisionOf(buffer) }
-    } catch {
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
       return { exists: false, buffer: null, revision: MISSING_REVISION }
     }
   }
@@ -148,27 +149,25 @@ export function createDataFileApi(options = {}) {
       return false
     }
 
-    if (pathname === '/api/config') {
-      const current = await readCurrent()
-      sendJson(res, 200, { dataFile: label, revision: current.revision }, { ETag: `"${current.revision}"` })
-      return true
-    }
+    if (pathname !== '/api/config' && pathname !== '/api/data') return false
 
-    if (pathname !== '/api/data') return false
-
-    if (req.method === 'GET' || req.method === 'HEAD') {
-      const current = await readCurrent()
-      if (!current.exists) {
-        sendJson(res, 404, { ok: false, reason: 'no-data-file' }, { ETag: `"${MISSING_REVISION}"` })
-        return true
+    if (pathname === '/api/config' || req.method === 'GET' || req.method === 'HEAD') {
+      try {
+        const current = await readCurrent()
+        if (pathname === '/api/config') {
+          sendJson(res, 200, { dataFile: label, revision: current.revision }, { ETag: `"${current.revision}"` })
+        } else if (!current.exists) {
+          sendJson(res, 404, { ok: false, reason: 'no-data-file' }, { ETag: `"${MISSING_REVISION}"` })
+        } else if (req.method === 'HEAD') {
+          res.statusCode = 200
+          res.setHeader('ETag', `"${current.revision}"`)
+          res.end()
+        } else {
+          sendSnapshot(res, current.buffer, current.revision)
+        }
+      } catch {
+        sendJson(res, 500, { ok: false, reason: 'read-failed' })
       }
-      if (req.method === 'HEAD') {
-        res.statusCode = 200
-        res.setHeader('ETag', `"${current.revision}"`)
-        res.end()
-        return true
-      }
-      sendSnapshot(res, current.buffer, current.revision)
       return true
     }
 

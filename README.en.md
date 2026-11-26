@@ -17,6 +17,7 @@ WhoYouKnow is a personal relationship system centered on **you**. It is not an a
 ```bash
 pnpm install
 pnpm dev      # development
+pnpm test     # Data flow regression tests
 pnpm build    # typecheck + production build
 pnpm preview  # preview the build
 pnpm serve    # serve dist + the data-file API; LINKMAP_DATA_FILE selects any file path
@@ -125,17 +126,18 @@ Notes:
 - These are three independent pages in the main navigation, no longer nested under a “Me” page.
 - **Profile** (`/profile`): the current user’s details, groups/circles and a relationship overview.
 - **Categories** (`/categories`): tags, groups and circles in three columns; each item supports up/down buttons and drag-and-drop; groups and circles open their detail pages.
-- **Settings** (`/settings`): project data-file status, JSON full backup/restore, CSV contact import/export; every change is written to the active data file (default `data/linkmap.json`).
+- **Settings** (`/settings`): project data-file status, JSON full backup/restore, CSV contact import/export. Changes go to the active data file when available (default `data/linkmap.json`). You can also restore a JSON backup directly from setup.
 
 ### Data
 
 - Shape: `{ version, people, tags, groups, circles, me }`; `people` holds contacts only, `me` holds the current user.
 - Data file: defaults to `data/linkmap.json`. `pnpm dev` / `pnpm preview` serve the Vite file API; `pnpm serve` serves static `dist` with the same API.
 - Custom path: start any of those with `LINKMAP_DATA_FILE=/absolute/path/data.json`; both the read/write location and the path shown in Settings follow it.
-- Fallback: if the file API is unavailable (for example a static host without the server), the app falls back to a localStorage mirror and shows the active mode in Settings.
-- Concurrency: every write carries an `If-Match` revision. When two tabs modify the file at once, the later write receives `409`; the client merges “last synced / current local / latest file” and retries instead of overwriting. Writes are serialized in-process and guarded by a cross-process `.lock` file.
+- Fallback: if the file API is unavailable (for example a static host without the server), the app keeps pending drafts in browser storage and shows the active mode in Settings.
+- Follow-up: filter important contacts or see which of them have no contact date or a date at least 30 days ago. Record, backdate, or clear the date from the contact details. JSON backups include this date.
+- Concurrency: each write carries an `If-Match` revision. Ordinary edits are merged against their base before retrying a conflict. A full restore requires a fresh read and confirmation if the file changed. Browser drafts are retried after reopening, reconnecting, or saving manually.
 - Legacy data: old `friendships`, `edges`, directions and `selfId` are ignored or migrated; important flags and empty notes are migrated. Legacy `selfId` is migrated into `me`.
-- CSV: the group column is imported/exported; circles never enter CSV. Same-name imports update incrementally, and rows matching “My profile” are skipped.
+- CSV: import matches columns by their headers. A legacy “圈子” column is treated as a group column. Same-name imports update incrementally, and rows matching “My profile” are skipped.
 
 ## Routes
 

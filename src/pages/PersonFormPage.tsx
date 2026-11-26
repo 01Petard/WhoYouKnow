@@ -2,7 +2,7 @@
  * [INPUT]: 依赖 ../components/Toast 的 useToast；依赖 ../store/useStore 的 data/addPerson/updatePerson/updateMe；依赖 ../types 的 Gender/PersonInput；依赖 react-router-dom 的 useLocation/useNavigate/useParams
  * [OUTPUT]: 导出 PersonFormPage 组件
  * [POS]: 新建与编辑共用的表单页；/profile/edit 编辑当前用户资料，其余按路径结尾 /edit 判定人物编辑；可就地新增标签与分组草稿
- * [PROTOCOL]: Update this header on change, then check CLAUDE.md
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -108,7 +108,7 @@ export function PersonFormPage() {
         toast.show('保存失败，数据未写入，请重试')
         return
       }
-      toast.show('已保存我的信息')
+      toast.showAfterFileSave('已保存我的信息')
       navigate('/profile', { replace: true })
       return
     }
@@ -117,7 +117,7 @@ export function PersonFormPage() {
         toast.show('保存失败，数据未写入，请重试')
         return
       }
-      toast.show(`已保存 ${form.name.trim()}`)
+      toast.showAfterFileSave(`已保存 ${form.name.trim()}`)
       navigate(`/person/${id}`, { replace: true })
       return
     }
@@ -126,7 +126,7 @@ export function PersonFormPage() {
       toast.show('保存失败，数据未写入，请重试')
       return
     }
-    toast.show(`已添加 ${form.name.trim()}`)
+    toast.showAfterFileSave(`已添加 ${form.name.trim()}`)
     const allPeople = useStore.getState().data.people
     const added = allPeople[allPeople.length - 1]
     if (added) navigate(`/person/${added.id}`, { replace: true })
