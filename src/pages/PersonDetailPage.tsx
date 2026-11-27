@@ -44,8 +44,10 @@ export function PersonDetailPage() {
     [data, person],
   )
   useEffect(() => {
-    if (person && hash === '#contact-history') document.getElementById('contact-history')?.scrollIntoView({ block: 'start' })
-  }, [person, hash])
+    if (person && (hash === '#contact-history' || hash.startsWith('#journal-entry-'))) {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+    }
+  }, [id, Boolean(person), hash])
 
   if (!person) {
     return (

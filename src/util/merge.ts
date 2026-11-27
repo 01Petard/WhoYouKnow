@@ -5,7 +5,7 @@
  *        记录按编号合并。项目成员、待办和约见独立合并。过滤失效的联系人引用。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, Circle, ContactEntry, Person } from '../types'
+import type { AppData, Circle, ContactEntry, Person, ReviewSelection } from '../types'
 import { filterProjectMembers } from './projects'
 import { filterTripVisits } from './cities'
 
@@ -28,7 +28,13 @@ function mergeRecord<T extends { updatedAt: string }>(base: T | undefined, local
   if (same(local, base)) return remote
   if (same(remote, base)) return local
   const latest = later(local, remote)
-  if (!base) return latest
+  if (!base) {
+    if ('selections' in local && 'selections' in remote) return {
+      ...latest,
+      selections: mergeRecords([], local.selections as ReviewSelection[], remote.selections as ReviewSelection[]),
+    }
+    return latest
+  }
   const keys = [...new Set([...Object.keys(local), ...Object.keys(remote)])] as (keyof T)[]
   return Object.fromEntries(keys.map((key) => {
     const before = base[key]
@@ -36,7 +42,7 @@ function mergeRecord<T extends { updatedAt: string }>(base: T | undefined, local
     const theirs = remote[key]
     if (same(mine, before)) return [key, theirs]
     if (same(theirs, before)) return [key, mine]
-    if (key === 'contactHistory' || key === 'members' || key === 'tasks' || key === 'visits') {
+    if (key === 'contactHistory' || key === 'members' || key === 'tasks' || key === 'visits' || key === 'selections') {
       const history = mergeRecords(
         (before ?? []) as Pick<ContactEntry, 'id' | 'updatedAt'>[],
         (mine ?? []) as Pick<ContactEntry, 'id' | 'updatedAt'>[],
@@ -148,6 +154,9 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
   const exchanges = local.exchanges || remote.exchanges || base.exchanges
     ? mergeRecords(base.exchanges ?? [], local.exchanges ?? [], remote.exchanges ?? [])
     : undefined
+  const reviews = local.reviews || remote.reviews || base.reviews
+    ? mergeRecords(base.reviews ?? [], local.reviews ?? [], remote.reviews ?? [])
+    : undefined
   return {
     version: Math.max(base.version, local.version, remote.version),
     people,
@@ -159,6 +168,7 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
     ...(projects ? { projects } : {}),
     ...(trips ? { trips } : {}),
     ...(exchanges ? { exchanges } : {}),
+    ...(reviews ? { reviews } : {}),
     me,
   }
 }

@@ -17,6 +17,7 @@
 - `PersonFormPage.tsx` 通过分区表单新建或编辑联系人和我的资料。新建时选择社交或事务目录。可选字段直接显示。新建遇到同名时，可新增或更新指定联系人。
 - `ProfilePage.tsx` 展示我的资料和分类概览。
 - `ProjectsPage.tsx` 展示进行中和已归档项目。编辑项目成员角色、进展与待办。
+- `ReviewsPage.tsx` 展示年度来源和重新联系。可编辑选编、预览与下载 Markdown。
 - `SelfSetupPage.tsx` 新建、迁移或从备份恢复我的资料。
 - `SettingsPage.tsx` 展示数据文件状态、备份和导入导出入口。
 

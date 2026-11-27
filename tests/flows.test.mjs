@@ -568,3 +568,61 @@ test('离线完成往来与远端改内容按编号合并，完成日期跟随�
   assert.equal(f.file.exchanges[0].content, '一本书')
   assert.deepEqual(f.file.exchanges[0].phase, { status: 'occurred', date: '2025-05-01' })
 })
+
+test('关系回顾按年统计唯一联系人与来源，跨年相邻手记达到 180 天时列入重新联系', async () => {
+  const { summarizeYear } = await import('../src/util/reviews.ts')
+  const entry = (id, date) => ({ id, date, method: 'call', note: '', updatedAt: '' })
+  const data = { ...empty, people: [
+    person('甲', { contactHistory: [entry('old', '2024-09-01'), entry('first', '2025-02-28'), entry('second', '2025-03-01'), entry('third', '2025-03-01')] }),
+    person('乙', { contactHistory: [entry('just-met', '2025-04-02')] }),
+  ], experiences: [{ id: 'event', title: '活动', place: '', note: '', date: '2025-04-02', participantIds: [], updatedAt: '' }] }
+  const stats = summarizeYear(data, '2025')
+  assert.equal(stats.people.length, 2)
+  assert.equal(stats.journal.length, 4)
+  assert.equal(stats.events.length, 1)
+  assert.deepEqual(stats.reconnected.map(({ entry, gap }) => [entry.id, gap]), [['first', 180]])
+  assert.equal(summarizeYear(data, '2024').journal.length, 1)
+  assert.equal(summarizeYear(data, '2024').reconnected.length, 0)
+})
+
+test('回顾备份保留来源引用和短评，Markdown 逐条控制原文并标记已移除来源', async () => {
+  const { reviewMarkdown, reviewSourceId, reviewSources } = await import('../src/util/reviews.ts')
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  const record = { id: 'journal', method: 'call', date: '2025-03-01', note: '手记原文', updatedAt: '' }
+  const journal = { kind: 'journal', personId: '甲', entryId: record.id }
+  const event = { kind: 'experience', entryId: 'missing' }
+  const data = { ...empty, people: [person('甲', { contactHistory: [record] })] }
+  const f = fixture(data)
+  const { useStore } = await import('../src/store/useStore.ts?reviews')
+  await useStore.getState().hydrate()
+  assert.equal(useStore.getState().saveReview({
+    id: '2025', title: '我的年鉴', selections: [journal, event].map((source) => ({
+      id: reviewSourceId(source), source, comment: '我的短评', includeOriginal: false, updatedAt: '',
+    })),
+  }), true)
+  assert.equal((await useStore.getState().storageSettled()).ok, true)
+  const backup = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
+  assert.equal(backup.ok, true)
+  const [review] = backup.data.reviews
+  const src = reviewSources(backup.data)
+  assert.match(src(journal).href, /#journal-entry-journal$/)
+  const markdown = reviewMarkdown(review, src)
+  assert.match(markdown, /我的短评/)
+  assert.match(markdown, /来源已移除/)
+  assert.match(markdown, /甲 · 通话/)
+  assert.doesNotMatch(markdown, /手记原文/)
+  review.selections[0].includeOriginal = true
+  assert.match(reviewMarkdown(review, src), /> 手记原文/)
+})
+
+test('两个标签页首次保存同一年回顾时合并各自选编', async () => {
+  const { mergeData } = await import('../src/util/merge.ts')
+  const { reviewSourceId } = await import('../src/util/reviews.ts')
+  const review = (entryId, updatedAt) => {
+    const source = { kind: 'experience', entryId }
+    return { id: '2025', title: '年度关系回顾', selections: [{ id: reviewSourceId(source), source, comment: '短评', includeOriginal: false, updatedAt }], updatedAt }
+  }
+  const merged = mergeData(empty, { ...empty, reviews: [review('local', '2025-04-01')] },
+    { ...empty, reviews: [review('remote', '2025-05-01')] })
+  assert.deepEqual(merged.reviews[0].selections.map((item) => item.source.entryId), ['local', 'remote'])
+})

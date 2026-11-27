@@ -1,0 +1,22 @@
+/*
+ * [INPUT]: 使用主题 Token、卡片、表单及工作台列表样式。
+ * [OUTPUT]: 定义年度统计控制、回顾选编和导出预览布局。
+ * [POS]: 关系回顾页面。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+.review-year { width: auto; }
+.review-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.review-stat.card { text-align: left; margin: 0; display: grid; gap: var(--sp-1); }
+.review-stat strong { font-size: var(--fs-h2); }
+.review-stat[aria-pressed="true"] { color: var(--color-action-active); border-color: currentColor; background: var(--color-action-wash); }
+.review-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-3); align-items: start; }
+.review-workspace > .card { margin-top: 0; }
+.review-selection .review-choices { margin: var(--sp-4) 0; list-style: none; padding: 0; }
+.review-choices li { display: grid; gap: var(--sp-2); }
+.review-choice-heading, .review-original { display: flex; align-items: start; gap: var(--sp-2); }
+.review-choice-heading { justify-content: space-between; }
+.review-preview { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 740px) {
+  .review-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .review-workspace { grid-template-columns: minmax(0, 1fr); }
+}

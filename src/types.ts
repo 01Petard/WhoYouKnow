@@ -123,6 +123,26 @@ export interface Exchange {
 
 export type ExchangeInput = Omit<Exchange, 'id' | 'updatedAt' | 'personName'>
 
+export type ReviewSource =
+  | { kind: 'journal'; entryId: string; personId: string }
+  | { kind: 'experience'; entryId: string }
+
+export interface ReviewSelection {
+  id: string
+  source: ReviewSource
+  comment: string
+  includeOriginal: boolean
+  updatedAt: string
+}
+
+export interface RelationshipReview {
+  /** 回顾年份，每年一份选编。 */
+  id: string
+  title: string
+  selections: ReviewSelection[]
+  updatedAt: string
+}
+
 export interface Person {
   id: string
   name: string
@@ -173,6 +193,7 @@ export interface AppData {
   projects?: PeopleProject[]
   trips?: CityTrip[]
   exchanges?: Exchange[]
+  reviews?: RelationshipReview[]
   /** 当前用户自己的资料，单独于 people 管理；null = 尚未创建「我的信息」 */
   me: Person | null
 }

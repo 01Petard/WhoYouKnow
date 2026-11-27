@@ -4,10 +4,11 @@
  * [POS]: 工作台的写入边界。保存往来状态与发生日期时沿用原编号。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, City, CityTripInput, ExchangeInput, ExperienceInput, IntroductionInput, PeopleProjectInput } from '../types'
+import type { AppData, City, CityTripInput, ExchangeInput, ExperienceInput, IntroductionInput, PeopleProjectInput, RelationshipReview } from '../types'
 import { cityKey, cityPeople, isCity, isTripInput, normalizeCity, uniqueCities } from '../util/cities'
 import { isDateOnly, today, uid } from '../util/id'
 import { validExchange } from '../util/exchanges'
+import { readReviews } from '../util/reviews'
 import { introductionIssue, introductionRoles } from '../util/introductions'
 import { isProjectInput } from '../util/projects'
 
@@ -20,6 +21,7 @@ export interface WorkspaceActions {
   saveTrip: (input: CityTripInput, id?: string) => string | null
   saveExchange: (input: ExchangeInput, id?: string) => string | null
   deleteExchange: (id: string) => boolean
+  saveReview: (review: Omit<RelationshipReview, 'updatedAt'>) => boolean
 }
 
 export function workspaceActions(readData: () => AppData, commit: (patch: { data: AppData }) => boolean): WorkspaceActions {
@@ -128,6 +130,17 @@ export function workspaceActions(readData: () => AppData, commit: (patch: { data
       const data = readData()
       if (!data.exchanges?.some((item) => item.id === id && item.phase.status === 'occurred')) return false
       return commit({ data: { ...data, exchanges: data.exchanges.filter((item) => item.id !== id) } })
+    },
+
+    saveReview(input) {
+      const data = readData()
+      const reviews = data.reviews ?? []
+      const review = { ...input, title: input.title.trim(), updatedAt: nowIso() }
+      if (!readReviews([review])) return false
+      const next = reviews.some((item) => item.id === review.id)
+        ? reviews.map((item) => item.id === review.id ? review : item)
+        : [...reviews, review]
+      return commit({ data: { ...data, reviews: next } })
     },
   }
 }

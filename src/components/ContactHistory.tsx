@@ -1,14 +1,14 @@
 /**
  * [INPUT]: 读取联系人手记。复用 DateField 和 Dropdown 选择日期与联系方式。调用全局状态写入新手记、编辑或删除。
  * [OUTPUT]: 导出联系人档案的手记列表与录入对话框。
- * [POS]: 支持同日多条记录，使用各自的记录编号。
+ * [POS]: 手记使用独立编号，并提供到原条目的跳转锚点。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
 import { BookOpen, Plus } from 'lucide-react'
 import type { ContactEntry, ContactEntryInput, ContactMethod, Person } from '../types'
 import { useStore } from '../store/useStore'
-import { compareContactEntries, CONTACT_METHODS } from '../util/contactJournal'
+import { compareContactEntries, CONTACT_METHODS, journalAnchor } from '../util/contactJournal'
 import { isDateOnly, today } from '../util/id'
 import { ConfirmDialog, Modal } from './Modal'
 import { DateField } from './DateField'
@@ -45,7 +45,7 @@ export function ContactHistory({ person }: { person: Person }) {
       {entries.length ? (
         <ol className="journal-entries">
           {entries.map((entry) => (
-            <li className="journal-entry" key={entry.id}>
+            <li className="journal-entry" key={entry.id} id={journalAnchor(entry.id)}>
               <div className="journal-entry-meta">
                 <time className="tabular" dateTime={entry.date}>{entry.date}</time>
                 <span className="tag-chip">{CONTACT_METHODS[entry.method]}</span>

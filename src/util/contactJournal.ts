@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 读取联系人和联系手记的数据模型。
- * [OUTPUT]: 提供联系方式、最新联系日期、时间线及往年今日查询。
+ * [OUTPUT]: 提供联系方式、手记锚点、最新联系日期、时间线及往年今日查询。
  * [POS]: 统一目录、待联系和手记页使用的联系日期规则。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -35,4 +35,8 @@ export function collectContactEntries(people: Person[]) {
 
 export function wentByOnThisDay(date: string, currentDate: string): boolean {
   return date < currentDate && date.slice(5) === currentDate.slice(5)
+}
+
+export function journalAnchor(id: string): string {
+  return `journal-entry-${encodeURIComponent(id)}`
 }

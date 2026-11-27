@@ -14,6 +14,7 @@ import { IntroductionsPage } from './pages/IntroductionsPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { CitiesPage } from './pages/CitiesPage'
 import { ExchangesPage } from './pages/ExchangesPage'
+import { ReviewsPage } from './pages/ReviewsPage'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonFormPage } from './pages/PersonFormPage'
 import { PersonDetailPage } from './pages/PersonDetailPage'
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/cities/trips/:id" element={<CitiesPage key="trip" />} />
         <Route path="/exchanges" element={<ExchangesPage key="list" />} />
         <Route path="/exchanges/:id" element={<ExchangesPage key="detail" />} />
+        <Route path="/reviews" element={<ReviewsPage />} />
         <Route path="/workspaces" element={<WorkspaceMenu />} />
         <Route path="/person/new" element={<PersonFormPage />} />
         <Route path="/person/:id" element={<PersonDetailPage />} />
