@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 zustand 的 create；依赖 ../types 全部领域类型；依赖 ../util/constants 的 DATA_VERSION；依赖 ../util/id 的 today/uid；依赖 ../util/csv 的 ParsedCsvRow；依赖 ../util/storage 的 bootstrap/persist/reloadFromFile
  * [OUTPUT]: 导出 useStore、UiState、emptyData，并再导出 today
- * [POS]: 管理联系人、联系手记和我的资料；常规改动即时更新界面，备份恢复等待持久化。
+ * [POS]: 管理联系人、事务目录状态、联系手记和我的资料；常规改动即时更新界面，备份恢复等待持久化。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { create } from 'zustand'
@@ -30,7 +30,7 @@ export interface UiState {
 
 const initialUi: UiState = {
   peopleSearch: '',
-  peopleView: 'all',
+  peopleView: 'social',
   peopleFilter: { groups: [], circles: [], tags: [] },
   networkSearch: '',
 }
@@ -125,6 +125,7 @@ interface Store extends Persisted {
   setLastContact: (id: string, date?: string) => boolean
   saveContactEntry: (personId: string, input: ContactEntryInput, entryId?: string) => boolean
   deleteContactEntry: (personId: string, entryId: string) => boolean
+  setPractical: (id: string, practical: boolean) => boolean
   setImportance: (id: string, important: boolean) => boolean
   addTag: (name: string) => boolean
   renameTag: (oldName: string, newName: string) => boolean
@@ -244,7 +245,7 @@ export const useStore = create<Store>((set, get) => {
 
     addPerson(input) {
       const data = get().data
-      const person = makePerson(input)
+      const person = { ...makePerson(input), practical: input.practical || undefined }
       return commit({
         data: {
           ...data,
@@ -262,6 +263,7 @@ export const useStore = create<Store>((set, get) => {
         ...person,
         id,
         important: previous?.important,
+        practical: previous?.practical,
         lastContactAt: previous?.lastContactAt,
         contactHistory: previous?.contactHistory,
         createdAt: previous?.createdAt ?? person.createdAt,
@@ -357,6 +359,14 @@ export const useStore = create<Store>((set, get) => {
       if (!person?.contactHistory?.some((entry) => entry.id === entryId)) return false
       const remaining = person.contactHistory.filter((entry) => entry.id !== entryId)
       const updated = { ...person, contactHistory: remaining.length ? remaining : undefined, updatedAt: nowIso() }
+      return commit({ data: { ...data, people: data.people.map((item) => item === person ? updated : item) } })
+    },
+
+    setPractical(id, practical) {
+      const data = get().data
+      const person = data.people.find((item) => item.id === id)
+      if (!person) return false
+      const updated = { ...person, practical: practical || undefined, updatedAt: nowIso() }
       return commit({ data: { ...data, people: data.people.map((item) => item === person ? updated : item) } })
     },
 

@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖联系人状态、手记查询与本地日期。
+ * [INPUT]: 依赖联系人状态、手记查询、本地日期和 Dropdown。
  * [OUTPUT]: 导出 ContactJournalPage。
  * [POS]: 按月显示全部手记，支持筛选并展示往年今天的记录。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
@@ -7,6 +7,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeft, ArrowUpRight, BookOpen, CalendarDays, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { Dropdown } from '../components/QuickSelect'
 import { Avatar } from '../components/PersonCard'
 import { useStore } from '../store/useStore'
 import type { ContactMethod } from '../types'
@@ -51,11 +52,18 @@ export function ContactJournalPage() {
               <Search size={17} aria-hidden="true" />
               <input type="search" aria-label="搜索联系人或手记" placeholder="搜索联系人或手记" value={search} onChange={(event) => setSearch(event.target.value)} />
             </div>
-            <select className="input journal-filter" aria-label="筛选联系方式" value={method}
-              onChange={(event) => setMethod(event.target.value as ContactMethod | '')}>
-              <option value="">全部方式</option>
-              {Object.entries(CONTACT_METHODS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </select>
+            <Dropdown<ContactMethod | ''>
+              label="筛选联系方式"
+              display={method ? CONTACT_METHODS[method] : '全部方式'}
+              options={[
+                { value: '', label: '全部方式', checked: method === '' },
+                ...(Object.keys(CONTACT_METHODS) as ContactMethod[]).map((value) => ({
+                  value, label: CONTACT_METHODS[value], checked: method === value,
+                })),
+              ]}
+              onSelect={setMethod}
+              field
+            />
           </div>
 
           {months.size ? Array.from(months, ([month, group]) => (

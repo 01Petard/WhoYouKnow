@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 使用 tokens.css 的颜色、尺寸和交互变量。
- * [OUTPUT]: 提供分类目录、成员列表、文件状态和备份表格样式。
- * [POS]: 由 global.css 加载。备份操作行也用于欢迎页。
+ * [OUTPUT]: 提供站内下拉、分类目录、成员列表、文件状态和备份表格样式。
+ * [POS]: 分类目录在主区，待分类联系人在宽屏侧栏。备份操作行也用于欢迎页。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 
@@ -15,13 +15,10 @@
 .organize-heading { margin-bottom: var(--sp-6); }
 
 .organize-picker {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--sp-1);
-  padding: var(--sp-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
+  display: flex;
+  gap: var(--sp-3);
+  padding-inline: var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .organize-view {
@@ -30,23 +27,21 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  min-height: var(--tap-min-size);
-  padding: 0 var(--sp-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  min-height: 54px;
+  padding-inline: var(--sp-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--fs-label);
   font-weight: var(--fw-medium);
-  text-align: start;
   white-space: nowrap;
-  transition: background var(--motion-fast), color var(--motion-fast);
 }
 
-.organize-view svg, .organize-section-icon { flex: 0 0 auto; }
-.organize-view:hover { background: var(--bg-subtle); }
+.organize-view svg, .organize-section-icon { flex: none; }
+.organize-view:hover { color: var(--color-action); }
 .organize-view[aria-pressed="true"] {
-  background: var(--color-action-wash);
+  border-bottom-color: var(--color-action);
   color: var(--color-action-active);
   font-weight: var(--fw-semibold);
 }
@@ -77,15 +72,19 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.organize-panel-heading .hint { margin-top: var(--sp-1); }
-.organize-panel-heading .btn { flex: 0 0 auto; }
+.organize-toolbar { display: flex; flex: none; gap: var(--sp-2); }
+.organize-sort-hint {
+  padding: var(--sp-2) var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-page);
+}
 .organize-entries { padding-inline: var(--sp-5); }
 
 .organize-entry {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  min-height: 64px;
+  min-height: 58px;
   padding: var(--sp-2) 0;
 }
 .organize-entry + .organize-entry { border-top: 1px solid var(--border-subtle); }
@@ -99,7 +98,8 @@
 .organize-entry-main {
   flex: 1;
   min-width: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 9em);
   align-items: center;
   gap: var(--sp-3);
 }
@@ -109,6 +109,7 @@
   align-items: center;
   gap: var(--sp-1);
   max-width: 100%;
+  justify-self: start;
   color: var(--text-heading);
   font-weight: var(--fw-semibold);
   overflow-wrap: anywhere;
@@ -116,15 +117,8 @@
 
 a.organize-entry-name:hover { color: var(--color-action); }
 .organize-entry-name svg { flex: 0 0 auto; color: var(--text-placeholder); }
-.organize-entry-actions,
-.organize-order {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.organize-entry-actions { flex: 0 0 auto; }
-.organize-order { margin-right: var(--sp-2); padding-right: var(--sp-2); border-right: 1px solid var(--border-subtle); }
+.organize-entry-meta { color: var(--text-secondary); font-size: var(--fs-caption); }
+.organize-entry-actions { display: flex; flex: none; align-items: center; }
 .organize-entry-actions .btn-icon,
 .collection-member .btn-icon {
   width: var(--tap-min-size);
@@ -154,12 +148,12 @@ a.organize-entry-name:hover { color: var(--color-action); }
   display: grid;
   gap: var(--sp-4);
   align-items: start;
-  margin-top: var(--sp-6);
 }
 
+.organize-queues > h2 { margin-bottom: calc(-1 * var(--sp-2)); }
 .organize-page .organize-queue { margin-top: 0; padding: 0; min-width: 0; }
 .organize-queue-heading { justify-content: initial; gap: var(--sp-2); }
-.organize-queue-heading h2 { flex: 1; min-width: 0; }
+.organize-queue-heading h3 { flex: 1; min-width: 0; font-size: var(--fs-label); }
 
 .organize-section-icon,
 .settings-data-icon {
@@ -222,7 +216,10 @@ a.organize-entry-name:hover { color: var(--color-action); }
 .quick-select-menu-up { top: auto; bottom: calc(100% + 3px); }
 .quick-select-menu .hint { padding: var(--sp-2); }
 .quick-select-option {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
   width: 100%;
   min-height: var(--tap-min-size);
   border: 0;
@@ -234,6 +231,17 @@ a.organize-entry-name:hover { color: var(--color-action); }
   text-align: start;
   overflow-wrap: anywhere;
 }
+.quick-select-option > svg, .quick-select-btn > svg { flex: none; }
+.dropdown-field > .quick-select-btn {
+  width: 100%;
+  justify-content: space-between;
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.dropdown-field > .quick-select-btn:focus-visible { border-color: var(--color-action); }
+.dropdown-field > .quick-select-menu { min-width: min(100%, 230px); }
+.quick-select-option[aria-pressed="true"],
 .quick-select-option:hover, .quick-select-option:focus-visible { background: var(--color-action-wash); }
 
 .collection-page .collection-back { margin-bottom: var(--sp-3); }
@@ -400,12 +408,11 @@ a.organize-entry-name:hover { color: var(--color-action); }
 .settings-import-progress progress { display: block; width: 100%; height: 8px; margin-top: var(--sp-2); accent-color: var(--color-action); }
 
 @media (min-width: 730px) {
-  .organize-workspace { grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); }
-  .organize-picker { grid-template-columns: 1fr; padding: var(--sp-2); }
-  .organize-view { justify-content: flex-start; padding-inline: var(--sp-3); }
-  .organize-view-count { margin-left: auto; }
-  .organize-queues { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .collection-workspace { grid-template-columns: minmax(0, 1fr) minmax(225px, .44fr); }
+}
+
+@media (min-width: 1050px) {
+  .organize-workspace { grid-template-columns: minmax(0, 1fr) minmax(260px, .55fr); gap: var(--sp-5); }
 }
 
 @media (min-width: 1240px) {
@@ -413,16 +420,16 @@ a.organize-entry-name:hover { color: var(--color-action); }
 }
 
 @media (max-width: 640px) {
-  .organize-view { gap: 5px; }
+  .organize-picker { padding-inline: var(--sp-4); gap: var(--sp-2); }
+  .organize-view { flex: 1; gap: 5px; min-height: 48px; }
   .organize-view svg { width: 15px; height: 15px; }
   .organize-panel-heading, .collection-panel-heading, .organize-queue-heading,
   .organize-queue-note, .collection-related-empty, .storage-panel-header, .storage-panel-body,
   .settings-data-section .settings-data-head { padding-inline: var(--sp-4); }
   .organize-entries, .organize-queue-list, .collection-list, .collection-related-list { padding-inline: var(--sp-4); }
   .organize-entry, .organize-entry-main { gap: var(--sp-1); }
-  .organize-entry-main { flex-direction: column; align-items: flex-start; }
-  .organize-entry-actions, .organize-order { gap: 0; }
-  .organize-order { margin-right: 0; padding-right: 0; }
+  .organize-entry-main { grid-template-columns: minmax(0, 1fr); }
+  .organize-sort-hint { padding-inline: var(--sp-4); }
   .organize-grip { width: 12px; }
   .collection-identity { gap: var(--sp-2); }
   .collection-icon { width: 43px; height: 43px; }

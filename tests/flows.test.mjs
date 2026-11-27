@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 使用 Node test、模拟文件 API 和浏览器存储。
- * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系和手记的回归测试。
+ * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系、事务目录和手记的回归测试。
  * [POS]: 验证核心数据流程，不访问项目真实数据文件。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -195,6 +195,48 @@ test('重要及待联系视图按本地日历跨月计算，与条件叠加，JS
   assert.ok(restored.ok)
   assert.equal(restored.data.people[1].lastContactAt, '2026-02-20')
   assert.equal(restored.data.people[3].lastContactAt, undefined)
+})
+
+test('人脉按姓名查询，分类条件按维度组合', async () => {
+  const { filterPeople } = await import('../src/util/queries.ts')
+  const data = { ...empty, circles: [{ id: '同事', name: '同事', groups: ['研发', '设计'] }], people: [
+    person('张三', { groups: ['研发'], tags: ['常联系'] }),
+    person('张四', { groups: ['设计'], tags: ['重要'] }),
+    person('张五', { groups: ['外部'], tags: ['常联系'] }),
+    person('李四', { groups: ['研发'], tags: ['常联系'], note: '张三' }),
+  ] }
+  const filter = { search: ' 张 ', searchByName: true, groups: ['研发', '设计', '外部'], circles: ['同事'], tags: ['常联系'] }
+  assert.deepEqual(filterPeople(data, filter).map(({ name }) => name), ['张三'])
+  assert.deepEqual(filterPeople(data, { ...filter, tags: ['常联系', '重要'] }).map(({ name }) => name), ['张三', '张四'])
+})
+
+test('事务联系人可移入和移回，编辑与备份恢复保留目录状态', async () => {
+  const { filterPeople } = await import('../src/util/queries.ts')
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  const f = fixture({ ...empty, people: [person('租房联系人', { important: true }), person('朋友')] })
+  const { useStore } = await import('../src/store/useStore.ts?practical-contacts')
+  const state = useStore.getState()
+  await state.hydrate()
+
+  assert.equal(state.setPractical('租房联系人', true), true)
+  assert.equal(state.updatePerson('租房联系人', { name: '房东' }), true)
+  await state.storageSettled()
+  const backup = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
+  assert.ok(backup.ok)
+  const filter = { search: '', groups: [], circles: [], tags: [] }
+  assert.deepEqual(new Set(filterPeople(backup.data, { ...filter, view: 'all' }).map(({ name }) => name)), new Set(['朋友', '房东']))
+  assert.deepEqual(filterPeople(backup.data, { ...filter, view: 'social' }).map(({ name }) => name), ['朋友'])
+  assert.deepEqual(filterPeople(backup.data, { ...filter, view: 'important' }), [])
+  assert.deepEqual(filterPeople(backup.data, { ...filter, view: 'followUp' }), [])
+  assert.deepEqual(filterPeople(backup.data, { ...filter, view: 'practical' }).map(({ name }) => name), ['房东'])
+
+  assert.equal(state.setPractical('租房联系人', false), true)
+  await state.storageSettled()
+  assert.deepEqual(filterPeople(f.file, { ...filter, view: 'practical' }), [])
+  assert.deepEqual(filterPeople(f.file, { ...filter, view: 'important' }).map(({ name }) => name), ['房东'])
+  assert.equal(state.addPerson({ name: '新房东', practical: true }), true)
+  await state.storageSettled()
+  assert.deepEqual(filterPeople(f.file, { ...filter, view: 'practical' }).map(({ name }) => name), ['新房东'])
 })
 
 test('联系手记允许同日消息和见面独立保存，编辑联系人不会丢失手记', async () => {

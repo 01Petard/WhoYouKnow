@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖路由链接、联系人字段、所属圈子与星标。
  * [OUTPUT]: 导出 Avatar 和 PersonCard。
- * [POS]: 各页面共用头像，目录行展示姓名、分组、圈子和标签。
+ * [POS]: 各页面共用头像，目录行展示姓名、性别符号、分组、圈子和标签。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { ChevronRight } from 'lucide-react'
@@ -22,6 +22,7 @@ export function Avatar({ person, small = false }: { person: Pick<Person, 'name' 
 }
 
 export function PersonCard({ person, circles }: { person: Person; circles: Circle[] }) {
+  const isMale = person.gender === '男'
   const subtitle = person.channel
   const group = person.groups[0]
   const groupCount = person.groups.length - 1
@@ -33,6 +34,25 @@ export function PersonCard({ person, circles }: { person: Person; circles: Circl
         <span className="person-info">
           <span className="person-name-row">
             <span className="person-name">{person.name}</span>
+            {(isMale || person.gender === '女') && (
+              <span className={`person-gender ${isMale ? 'person-gender-male' : 'person-gender-female'}`}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                  strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {isMale ? (
+                    <>
+                      <circle cx="6" cy="10" r="3.5" />
+                      <path d="m8.5 7.5 5-5m-4 0h4v4" />
+                    </>
+                  ) : (
+                    <>
+                      <circle cx="8" cy="5.5" r="3.5" />
+                      <path d="M8 9v5m-2.5-2.5h5" />
+                    </>
+                  )}
+                </svg>
+                <span className="sr-only">{person.gender}</span>
+              </span>
+            )}
             {person.important && <ImportantStar active />}
           </span>
           {subtitle && <span className="person-sub">{subtitle}</span>}

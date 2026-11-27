@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 使用设计 Token 与关系网组件的类名。
- * [OUTPUT]: 配置关系网的查找工具、SVG 画布、图例和选中档案。
+ * [OUTPUT]: 配置关系网的查找与显隐工具、SVG 画布、图例和选中档案。
  * [POS]: 关系网页使用此样式。宽屏并排显示画布和图例，窄屏将图例放在画布上方。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -12,7 +12,6 @@
 
 .ng-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--sp-3);
@@ -56,7 +55,45 @@
   font-weight: var(--fw-semibold);
 }
 
+.ng-practical-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap-min-size);
+  padding-inline: var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+}
+.ng-switch-track {
+  display: flex;
+  align-items: center;
+  width: 36px;
+  height: 22px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--text-placeholder);
+  transition: background var(--motion-fast);
+}
+.ng-switch-track::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  transition: transform var(--motion-fast);
+}
+.ng-practical-toggle[aria-checked="true"] .ng-switch-track { background: var(--color-action); }
+.ng-practical-toggle[aria-checked="true"] .ng-switch-track::before { transform: translateX(14px); }
+@media (prefers-reduced-motion: reduce) {
+  .ng-switch-track, .ng-switch-track::before { transition: none; }
+}
+
 .ng-lookup {
+  margin-inline-start: auto;
   position: relative;
   width: min(100%, 300px);
 }

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 React、路由、联系人查询、最新联系日期和 NetworkGraph 的画布与图例。
  * [OUTPUT]: 导出 NetworkPage。
- * [POS]: 在关系网页切换分类。将选中的联系人资料交给画布侧栏。
+ * [POS]: 在关系网页切换分类与事务联系人可见性。将选中的联系人资料交给画布侧栏。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useId, useMemo, useState } from 'react'
@@ -23,6 +23,7 @@ type ClusterBy = (typeof MODES)[number]['key']
 
 export function NetworkPage() {
   const data = useStore((state) => state.data)
+  const [showPractical, setShowPractical] = useState(false)
   const [clusterBy, setClusterBy] = useState<ClusterBy>('group')
   const [focusId, setFocusId] = useState<string | null>(null)
   const [locateRequest, setLocateRequest] = useState<{ id: string } | null>(null)
@@ -31,13 +32,17 @@ export function NetworkPage() {
   const resultId = useId()
   const searchTerm = query.trim().toLocaleLowerCase()
   const showResults = searchOpen && Boolean(searchTerm)
-  const focus = focusId ? data.people.find((person) => person.id === focusId) : undefined
+  const people = useMemo(
+    () => showPractical ? data.people : data.people.filter((person) => !person.practical),
+    [data.people, showPractical],
+  )
+  const focus = focusId ? people.find((person) => person.id === focusId) : undefined
   const focusCircles = focus ? circlesOfPerson(data, focus) : []
   const matches = useMemo(
     () => searchTerm
-      ? data.people.filter((person) => person.name.toLocaleLowerCase().includes(searchTerm)).slice(0, 6)
+      ? people.filter((person) => person.name.toLocaleLowerCase().includes(searchTerm)).slice(0, 6)
       : [],
-    [data.people, searchTerm],
+    [people, searchTerm],
   )
 
   function focusNode(id: string | null) {
@@ -57,7 +62,7 @@ export function NetworkPage() {
       <header className="page-header ng-page-header">
         <div>
           <h1 className="page-title">关系网</h1>
-          <p className="page-count tabular">{data.people.length} 位联系人</p>
+          <p className="page-count tabular">{people.length} 位联系人</p>
         </div>
       </header>
 
@@ -84,6 +89,16 @@ export function NetworkPage() {
                 </button>
               ))}
             </div>
+
+            <button type="button" className="ng-practical-toggle" role="switch"
+              aria-checked={showPractical}
+              onClick={() => {
+                if (showPractical && focus?.practical) focusNode(null)
+                setShowPractical(!showPractical)
+              }}>
+              <span className="ng-switch-track" aria-hidden="true" />
+              显示事务联系人
+            </button>
 
             <div
               className="ng-lookup"
@@ -138,14 +153,14 @@ export function NetworkPage() {
           </div>
 
           <NetworkGraph
-            people={data.people}
+            people={people}
             me={data.me}
             groups={data.groups}
             circles={data.circles}
             tags={data.tags}
             clusterBy={clusterBy}
             focusId={focus?.id ?? null}
-            locateRequest={locateRequest}
+            locateRequest={focus ? locateRequest : null}
             onFocus={focusNode}
             details={focus && (
               <section className="ng-details" aria-label="当前选中的联系人" tabIndex={0}>

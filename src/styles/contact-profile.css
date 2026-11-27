@@ -18,7 +18,6 @@
   background: var(--bg-surface);
 }
 .contact-profile-header .avatar { width: 68px; height: 68px; font-size: 27px; }
-.contact-profile-name h1 { overflow-wrap: anywhere; line-height: 1.2; }
 .contact-profile-subtitle, .contact-profile-actions {
   display: flex;
   align-items: center;

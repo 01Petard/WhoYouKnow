@@ -1,12 +1,12 @@
 /**
  * [INPUT]: 依赖分类增删改与排序动作、圈子成员查询、编辑对话框和联系人快捷分类组件。
  * [OUTPUT]: 导出 CategoriesPage。
- * [POS]: 在分组、圈子与标签的列表之间切换，并就地补齐联系人的分类。
+ * [POS]: 主区切换并管理分组、圈子与标签，待分类区提供联系人快捷分配。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, ChevronDown, ChevronUp, Folder, GripVertical, Layers, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
+import { ArrowDownUp, ChevronDown, ChevronRight, ChevronUp, Folder, GripVertical, Layers, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
 import { CircleEditor } from '../components/CircleEditor'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { QuickSelect } from '../components/QuickSelect'
@@ -53,6 +53,7 @@ export function CategoriesPage() {
   const toast = useToast()
 
   const [view, setView] = useState<CategoryKind>('group')
+  const [sorting, setSorting] = useState(false)
   const [editor, setEditor] = useState<NameEditor | null>(null)
   const [fieldError, setFieldError] = useState('')
   const [removing, setRemoving] = useState<Removing | null>(null)
@@ -216,35 +217,41 @@ export function CategoriesPage() {
       </header>
 
       <div className="organize-workspace">
-        <div className="organize-picker" role="group" aria-label="分类视图">
-          {CATEGORY_VIEWS.map(({ kind, label, Icon }) => (
-            <button
-              key={kind}
-              type="button"
-              className="organize-view"
-              aria-pressed={view === kind}
-              aria-controls="category-list"
-              onClick={() => setView(kind)}
-            >
-              <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-              <span>{label}</span>
-              <span className="organize-view-count tabular">{counts[kind]}</span>
-            </button>
-          ))}
-        </div>
-
         <section className="card organize-list" id="category-list" aria-labelledby="category-list-title">
+          <div className="organize-picker" role="group" aria-label="分类视图">
+            {CATEGORY_VIEWS.map(({ kind, label, Icon }) => (
+              <button
+                key={kind}
+                type="button"
+                className="organize-view"
+                aria-pressed={view === kind}
+                aria-controls="category-list"
+                onClick={() => { setView(kind); setSorting(false) }}
+              >
+                <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>{label}</span>
+                <span className="organize-view-count tabular">{counts[kind]}</span>
+              </button>
+            ))}
+          </div>
+
           <header className="organize-panel-heading">
-            <div>
-              <h2 id="category-list-title" className="section-title">{selectedView.label}</h2>
+            <h2 id="category-list-title" className="section-title">{selectedView.label}</h2>
+            <div className="organize-toolbar">
               {entries.length > 1 && (
-                <p className="hint">{view === 'tag' ? '拖动或使用箭头排序。' : '拖动或使用箭头调整在关系网中的顺序。'}</p>
+                <button type="button" className="btn btn-secondary btn-sm" aria-pressed={sorting}
+                  onClick={() => setSorting(!sorting)}>
+                  <ArrowDownUp size={15} aria-hidden="true" /> {sorting ? '完成排序' : '排序'}
+                </button>
+              )}
+              {!sorting && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={addCategory}>
+                  <Plus size={16} aria-hidden="true" /> 新增{selectedView.label}
+                </button>
               )}
             </div>
-            <button type="button" className="btn btn-primary btn-sm" onClick={addCategory}>
-              <Plus size={16} aria-hidden="true" /> 新增{selectedView.label}
-            </button>
           </header>
+          {sorting && <p className="hint organize-sort-hint">拖动列表项，或用上下箭头调整顺序。</p>}
           {entries.length === 0 ? (
             <div className="organize-empty">
               <selectedView.Icon size={23} strokeWidth={1.55} aria-hidden="true" />
@@ -256,60 +263,66 @@ export function CategoriesPage() {
                 <li
                   className={`organize-entry${over?.kind === view && over.value === value ? ' organize-entry-over' : ''}`}
                   key={value}
-                  {...dragProps(value)}
+                  {...(sorting ? dragProps(value) : {})}
                 >
-                  <GripVertical size={16} className="organize-grip" aria-hidden="true" />
+                  {sorting && <GripVertical size={16} className="organize-grip" aria-hidden="true" />}
                   <div className="organize-entry-main">
                     {to ? (
                       <Link className="organize-entry-name" to={to}>
-                        <span>{name}</span><ArrowUpRight size={14} aria-hidden="true" />
+                        <span>{name}</span><ChevronRight size={15} aria-hidden="true" />
                       </Link>
                     ) : <span className="organize-entry-name">{name}</span>}
-                    <span className="hint tabular">{meta}</span>
+                    <span className="organize-entry-meta tabular">{meta}</span>
                   </div>
                   <div className="organize-entry-actions" role="group" aria-label={`${name}的操作`}>
-                    <div className="organize-order">
-                      <button type="button" className="btn-icon" aria-label={`上移${name}`} title="上移" disabled={index === 0} onClick={() => move(value, -1)}><ChevronUp size={17} aria-hidden="true" /></button>
-                      <button type="button" className="btn-icon" aria-label={`下移${name}`} title="下移" disabled={index === entries.length - 1} onClick={() => move(value, 1)}><ChevronDown size={17} aria-hidden="true" /></button>
-                    </div>
-                    <button type="button" className="btn-icon" aria-label={view === 'circle' ? `编辑圈子${name}` : `重命名${name}`} title={view === 'circle' ? '编辑圈子' : '重命名'} onClick={edit}><Pencil size={16} aria-hidden="true" /></button>
-                    <button type="button" className="btn-icon organize-remove" aria-label={view === 'circle' ? `删除圈子${name}` : `删除${name}`} title="删除" onClick={() => setRemoving({ kind: view, value, label: name })}><Trash2 size={16} aria-hidden="true" /></button>
+                    {sorting ? (
+                      <>
+                        <button type="button" className="btn-icon" aria-label={`上移${name}`} title="上移" disabled={index === 0} onClick={() => move(value, -1)}><ChevronUp size={17} aria-hidden="true" /></button>
+                        <button type="button" className="btn-icon" aria-label={`下移${name}`} title="下移" disabled={index === entries.length - 1} onClick={() => move(value, 1)}><ChevronDown size={17} aria-hidden="true" /></button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" className="btn-icon" aria-label={view === 'circle' ? `编辑圈子${name}` : `重命名${name}`} title={view === 'circle' ? '编辑圈子' : '重命名'} onClick={edit}><Pencil size={16} aria-hidden="true" /></button>
+                        <button type="button" className="btn-icon organize-remove" aria-label={view === 'circle' ? `删除圈子${name}` : `删除${name}`} title="删除" onClick={() => setRemoving({ kind: view, value, label: name })}><Trash2 size={16} aria-hidden="true" /></button>
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
           )}
         </section>
-      </div>
 
-      <div className="organize-queues">
-        {queues.map(({ key, title, Icon, people, options, label, empty, assign, message }) => (
-          <section className="card organize-queue" key={key} aria-labelledby={`organize-queue-${key}`}>
-            <header className="organize-queue-heading">
-              <span className="organize-section-icon"><Icon size={17} strokeWidth={1.7} aria-hidden="true" /></span>
-              <h2 className="section-title" id={`organize-queue-${key}`}>{title}</h2>
-              <span className="organize-queue-count tabular">{people.length} 人</span>
-            </header>
-            {people.length === 0 ? (
-              <p className="hint organize-queue-note">{data.people.length ? empty : '添加联系人后，可在这里补齐分类。'}</p>
-            ) : (
-              <>
-                <ul className="organize-queue-list">
-                  {people.slice(0, 10).map((person) => (
-                    <li className="organize-queue-row" key={person.id}>
-                      <Link to={`/person/${person.id}`}>{person.name}</Link>
-                      <QuickSelect label={label} options={options} onSelect={(name) => {
-                        if (assign(person.id, name)) toast.showAfterFileSave(message(person.name, name))
-                        else toast.show('保存失败，请重试')
-                      }} />
-                    </li>
-                  ))}
-                </ul>
-                {people.length > 10 && <p className="hint organize-queue-note">另有 {people.length - 10} 位联系人。</p>}
-              </>
-            )}
-          </section>
-        ))}
+        <aside className="organize-queues" aria-labelledby="organize-queues-title">
+          <h2 className="section-title" id="organize-queues-title">待分类联系人</h2>
+          {queues.map(({ key, title, Icon, people, options, label, empty, assign, message }) => (
+            <section className="card organize-queue" key={key} aria-labelledby={`organize-queue-${key}`}>
+              <header className="organize-queue-heading">
+                <span className="organize-section-icon"><Icon size={17} strokeWidth={1.7} aria-hidden="true" /></span>
+                <h3 className="section-title" id={`organize-queue-${key}`}>{title}</h3>
+                <span className="organize-queue-count tabular">{people.length} 人</span>
+              </header>
+              {people.length === 0 ? (
+                <p className="hint organize-queue-note">{data.people.length ? empty : '添加联系人后，可在这里补齐分类。'}</p>
+              ) : (
+                <>
+                  <ul className="organize-queue-list">
+                    {people.slice(0, 10).map((person) => (
+                      <li className="organize-queue-row" key={person.id}>
+                        <Link to={`/person/${person.id}`}>{person.name}</Link>
+                        <QuickSelect label={label} options={options} onSelect={(name) => {
+                          if (assign(person.id, name)) toast.showAfterFileSave(message(person.name, name))
+                          else toast.show('保存失败，请重试')
+                        }} />
+                      </li>
+                    ))}
+                  </ul>
+                  {people.length > 10 && <p className="hint organize-queue-note">另有 {people.length - 10} 位联系人。</p>}
+                </>
+              )}
+            </section>
+          ))}
+        </aside>
       </div>
 
       <Modal

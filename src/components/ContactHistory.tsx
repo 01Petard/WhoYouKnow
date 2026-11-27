@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 读取联系人手记。调用全局状态写入新手记、编辑或删除。
+ * [INPUT]: 读取联系人手记。复用 DateField 和 Dropdown 选择日期与联系方式。调用全局状态写入新手记、编辑或删除。
  * [OUTPUT]: 导出联系人档案的手记列表与录入对话框。
  * [POS]: 支持同日多条记录，使用各自的记录编号。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
@@ -11,6 +11,8 @@ import { useStore } from '../store/useStore'
 import { compareContactEntries, CONTACT_METHODS } from '../util/contactJournal'
 import { isDateOnly, today } from '../util/id'
 import { ConfirmDialog, Modal } from './Modal'
+import { DateField } from './DateField'
+import { Dropdown } from './QuickSelect'
 import { useToast } from './Toast'
 
 export function ContactHistory({ person }: { person: Person }) {
@@ -85,17 +87,23 @@ export function ContactHistory({ person }: { person: Person }) {
           }}>
             <div className="field">
               <label className="field-label" htmlFor="journal-entry-date">手记日期</label>
-              <input id="journal-entry-date" type="date" value={draft.date} max={currentDate} aria-invalid={dateError}
-                aria-describedby={dateError ? 'journal-entry-date-error' : undefined}
-                onChange={(event) => { setDraft({ ...draft, date: event.target.value }); setDateError(false) }} />
+              <DateField id="journal-entry-date" value={draft.date} max={currentDate} invalid={dateError}
+                describedBy={dateError ? 'journal-entry-date-error' : undefined}
+                onChange={(date) => { setDraft({ ...draft, date }); setDateError(false) }} />
               {dateError && <p className="field-error" id="journal-entry-date-error" role="alert">请选择今天或更早的有效日期。</p>}
             </div>
             <div className="field">
               <label className="field-label" htmlFor="journal-entry-method">联系方式</label>
-              <select id="journal-entry-method" value={draft.method}
-                onChange={(event) => setDraft({ ...draft, method: event.target.value as ContactMethod })}>
-                {Object.entries(CONTACT_METHODS).map(([method, label]) => <option value={method} key={method}>{label}</option>)}
-              </select>
+              <Dropdown
+                id="journal-entry-method"
+                label="联系方式"
+                display={CONTACT_METHODS[draft.method]}
+                options={(Object.keys(CONTACT_METHODS) as ContactMethod[]).map((value) => ({
+                  value, label: CONTACT_METHODS[value], checked: draft.method === value,
+                }))}
+                onSelect={(method) => setDraft({ ...draft, method })}
+                field
+              />
             </div>
             <div className="field">
               <label className="field-label" htmlFor="journal-entry-note">手记内容（选填）</label>

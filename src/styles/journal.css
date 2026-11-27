@@ -20,7 +20,7 @@
   align-items: center;
 }
 .journal-timeline-toolbar .search-field input { min-width: 0; }
-.journal-filter.input { width: auto; min-height: 44px; }
+.journal-timeline-toolbar .dropdown-field { width: auto; }
 .journal-month { margin-top: var(--sp-6); }
 .journal-month h2 {
   color: var(--text-secondary);
@@ -78,5 +78,5 @@
   .directory-heading { flex-wrap: wrap; }
   .directory-heading-actions { justify-content: flex-start; }
   .journal-timeline-toolbar { grid-template-columns: minmax(0, 1fr); }
-  .journal-filter.input { width: 100%; }
+  .journal-timeline-toolbar .dropdown-field { width: 100%; }
 }

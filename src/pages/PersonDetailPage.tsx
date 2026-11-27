@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 读取联系人、最新联系日期、分类与手记。通过状态仓库写入联系标记。
+ * [INPUT]: 读取联系人、最新联系日期、分类与手记。复用 DateField 选择联系日期。通过状态仓库写入联系标记和事务目录状态。
  * [OUTPUT]: 导出 PersonDetailPage。
  * [POS]: 将联系人档案分成联系活动与资料。保留分类导航及编辑、删除入口。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
@@ -7,6 +7,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, Pencil, Plus, Star, Trash2 } from 'lucide-react'
+import { DateField } from '../components/DateField'
 import { ContactHistory } from '../components/ContactHistory'
 import { ConfirmDialog } from '../components/Modal'
 import { EmptyState } from '../components/EmptyState'
@@ -25,6 +26,7 @@ export function PersonDetailPage() {
   const data = useStore((s) => s.data)
   const deletePerson = useStore((s) => s.deletePerson)
   const setLastContact = useStore((s) => s.setLastContact)
+  const setPractical = useStore((s) => s.setPractical)
   const setImportance = useStore((s) => s.setImportance)
   const [contactDate, setContactDate] = useState<string | null>(null)
   const [contactError, setContactError] = useState('')
@@ -71,7 +73,12 @@ export function PersonDetailPage() {
         <Avatar person={person} />
         <div className="contact-profile-name">
           <h1 className="page-title">{person.name}</h1>
-          {person.important && <p className="contact-profile-subtitle"><span className="contact-profile-marker">重要联系人</span></p>}
+          {(person.practical || person.important) && (
+            <p className="contact-profile-subtitle">
+              {person.practical && <span>事务联系人</span>}
+              {person.important && <span className="contact-profile-marker">重要联系人</span>}
+            </p>
+          )}
         </div>
         <div className="contact-profile-actions">
           <button type="button" className="btn-icon contact-profile-star"
@@ -106,9 +113,9 @@ export function PersonDetailPage() {
               }}>
                 <div className="field">
                   <label className="field-label" htmlFor="last-contact-date">手动标记日期</label>
-                  <input id="last-contact-date" type="date" max={currentDate} value={dateInput}
-                    onChange={(event) => { setContactDate(event.target.value); setContactError('') }}
-                    aria-invalid={Boolean(contactError)} aria-describedby={contactError ? 'last-contact-error' : undefined} />
+                  <DateField id="last-contact-date" max={currentDate} value={dateInput}
+                    onChange={(date) => { setContactDate(date); setContactError('') }}
+                    invalid={Boolean(contactError)} describedBy={contactError ? 'last-contact-error' : undefined} />
                   {contactError && <p className="field-error" id="last-contact-error" role="alert">{contactError}</p>}
                 </div>
                 <div className="row-actions">
@@ -138,6 +145,18 @@ export function PersonDetailPage() {
           <section className="contact-profile-info-section" aria-labelledby="person-categories-heading">
             <h2 id="person-categories-heading" className="section-title">分类</h2>
             <dl className="contact-profile-fields contact-profile-classification">
+              <div><dt>目录</dt><dd>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+                  const practical = !person.practical
+                  if (setPractical(person.id, practical)) {
+                    toast.showAfterFileSave(practical ? '已移入事务联系人' : '已移回社交联系人')
+                  } else {
+                    toast.show('保存失败，请重试')
+                  }
+                }}>
+                  {person.practical ? '移回社交联系人' : '移入事务联系人'}
+                </button>
+              </dd></div>
               <div><dt>分组</dt><dd className="tag-chips">
                 {person.groups.length ? person.groups.map((group) => (
                   <button type="button" className="tag-chip tag-chip-link" key={group}

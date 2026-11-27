@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 ../types 的 AppData/Circle/Person；依赖 ./constants 的分类哨兵与待联系天数；依赖联系手记和本地日历日期
  * [OUTPUT]: 导出 personById、circleMembers、circlesOfPerson、filterPeople
- * [POS]: 纯读查询层；people 只含联系人，系统不保存联系人之间的关系边；只消费 AppData，不产生写操作
+ * [POS]: 纯读查询层；people 只含联系人，系统不保存联系人之间的关系边；目录视图区分事务联系人；只消费 AppData，不产生写操作
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, Circle, PeopleView, Person } from '../types'
@@ -31,6 +31,7 @@ export function circlesOfPerson(data: AppData, person: Person): Circle[] {
 
 export interface PeopleFilter {
   search: string
+  searchByName?: boolean
   view?: PeopleView
   groups: string[]
   circles: string[]
@@ -48,6 +49,7 @@ export function filterPeople(data: AppData, filter: PeopleFilter, currentDate = 
   const q = filter.search.trim().toLocaleLowerCase()
   return data.people
     .filter((p) => {
+      if (filter.view && filter.view !== 'all' && Boolean(p.practical) !== (filter.view === 'practical')) return false
       if (filter.view === 'important' && !p.important) return false
       if (filter.view === 'followUp') {
         if (!p.important) return false
@@ -79,7 +81,8 @@ export function filterPeople(data: AppData, filter: PeopleFilter, currentDate = 
         if (!tagMatch) return false
       }
       if (q) {
-        const haystack = [p.name, p.note, p.channel, ...p.tags].join(' ').trim().toLocaleLowerCase()
+        const searchableText = filter.searchByName ? p.name : [p.name, p.note, p.channel, ...p.tags].join(' ')
+        const haystack = searchableText.toLocaleLowerCase()
         if (!haystack.includes(q)) return false
       }
       return true

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 使用颜色、字型、间距与动效 Token。
- * [OUTPUT]: 提供排版、表单、按钮、空态、弹窗与反馈原语。
+ * [OUTPUT]: 提供排版、表单、月历、按钮、空态、弹窗与反馈原语。
  * [POS]: 应用外壳和各页面样式共享的基础层。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -19,7 +19,7 @@ body {
   letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
 }
-button, input, textarea, select { font: inherit; color: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--color-action); text-decoration: none; }
 h1, h2, h3, p { margin: 0; }
@@ -182,14 +182,14 @@ button.tag-chip { cursor: pointer; font-family: inherit; }
 .field { margin-bottom: var(--sp-4); }
 .field-label { display: block; font-size: var(--fs-label); line-height: var(--lh-label); font-weight: var(--fw-medium); color: var(--text-secondary); margin-bottom: var(--sp-2); }
 .field-required { color: var(--status-danger-ink); margin-left: 2px; }
-.field input[type="text"], .field input[type="date"], .field textarea, .field select,
+.field input[type="text"], .field textarea,
 .input {
   width: 100%; min-height: var(--tap-min-size); padding: var(--sp-2) var(--sp-3);
   background: var(--bg-surface); border: 1px solid var(--border-default);
   border-radius: var(--radius-sm); outline: 0; font-size: var(--fs-body); color: var(--text-primary);
 }
 .field textarea { min-height: 88px; resize: vertical; }
-.field input:focus, .field textarea:focus, .field select:focus, .input:focus { border-color: var(--color-action); box-shadow: 0 0 0 2px var(--focus-ring); }
+.field input:focus, .field textarea:focus, .input:focus { border-color: var(--color-action); box-shadow: 0 0 0 2px var(--focus-ring); }
 .field input[aria-invalid="true"], .field textarea[aria-invalid="true"] { border-color: var(--status-danger-ink); }
 .field-error { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--status-danger-ink); margin-top: var(--sp-1); }
 .field-hint { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--text-placeholder); margin-top: var(--sp-1); }
@@ -285,3 +285,20 @@ button.tag-chip { cursor: pointer; font-family: inherit; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .btn:active { transform: none; }
 }
+
+.date-field-input, .date-field-month { display: flex; align-items: center; gap: var(--sp-2); }
+.date-field-input input { flex: 1; min-width: 0; }
+.date-field-input .btn { flex: none; }
+.date-field-calendar {
+  width: min(100%, 320px);
+  margin-top: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+.date-field-month { justify-content: space-between; }
+.date-field-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; }
+.date-field-days > span { padding-block: var(--sp-2); color: var(--text-secondary); font-size: var(--fs-caption); }
+.date-field-days button { min-height: 36px; border: 0; border-radius: var(--radius-xs); background: transparent; }
+.date-field-days button:not(:disabled):hover, .date-field-days button[aria-pressed="true"] { background: var(--color-action-wash); }

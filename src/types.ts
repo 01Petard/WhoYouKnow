@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 不导入任何模块；定义 store、util、components、pages 共用的领域模型
  * [OUTPUT]: 导出 Person、Circle、AppData、BackupFile、StorageSnapshot、PersonInput、ContactEntry、PeopleView、FilterState 等
- * [POS]: 全项目唯一的领域类型定义处；people 只存联系人，me 单独存当前用户；系统不保存联系人之间的关系边
+ * [POS]: 全项目唯一的领域类型定义处；people 只存联系人，me 单独存当前用户；事务联系人以人物标记持久化；系统不保存联系人之间的关系边
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 export type Gender = '男' | '女' | '其他'
@@ -34,6 +34,8 @@ export interface Person {
   groups: string[]
   /** 个人标记：是否重要；与关系状态无关 */
   important?: boolean
+  /** 在人脉页归入事务目录；关系网默认排除此联系人。 */
+  practical?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -77,6 +79,7 @@ export interface StorageSnapshot {
 export type StorageKind = 'file' | 'local'
 
 export interface PersonInput {
+  practical?: boolean
   name: string
   avatar?: string
   gender?: Gender
@@ -88,7 +91,7 @@ export interface PersonInput {
   groups?: string[]
 }
 
-export type PeopleView = 'all' | 'important' | 'followUp'
+export type PeopleView = 'all' | 'social' | 'important' | 'followUp' | 'practical'
 
 export interface FilterState {
   /** 分组名筛选 */
