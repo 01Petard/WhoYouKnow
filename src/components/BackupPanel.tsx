@@ -73,7 +73,7 @@ export function BackupPanel({ setup = false }: { setup?: boolean }) {
               <span className="settings-data-icon"><FileJson size={20} aria-hidden="true" /></span>
               <div>
                 <h2>备份与恢复</h2>
-                <p className="hint">完整备份包含联系人、我的信息、分类、共同经历与引荐。恢复会整体替换当前数据。</p>
+                <p className="hint">完整备份包含联系人、我的信息、分类和工作台记录。恢复会整体替换当前数据。</p>
               </div>
             </div>
 

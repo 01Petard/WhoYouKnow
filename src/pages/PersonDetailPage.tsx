@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 读取联系人、分类、手记、共同经历和引荐。复用 DateField 选择联系日期。通过状态仓库写入联系标记和事务目录状态。
+ * [INPUT]: 读取联系人、分类、手记和工作台记录。复用 DateField 选择联系日期。
  * [OUTPUT]: 导出 PersonDetailPage。
- * [POS]: 将联系人档案分成联系活动与资料。共同经历和引荐回链指向原记录。
+ * [POS]: 并列展示联系活动与资料，并回链此人参与的经历、引荐和项目。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useRef, useState } from 'react'
@@ -71,6 +71,11 @@ export function PersonDetailPage() {
     })
     return role ? [{ item, role }] : []
   }).sort((a, b) => b.item.date.localeCompare(a.item.date))
+  const projects = (data.projects ?? []).flatMap((project) => {
+    const member = project.members.find((item) => item.id === id)
+    return member ? [{ project, member }] : []
+  }).sort((a, b) => Number(a.project.archived) - Number(b.project.archived)
+    || b.project.updatedAt.localeCompare(a.project.updatedAt))
   const deleteMessage = person.contactHistory?.length
     ? `删除「${person.name}」及其 ${person.contactHistory.length} 条联系手记？此操作不可撤销。`
     : COPY.deletePersonDialog(person.name)
@@ -158,6 +163,16 @@ export function PersonDetailPage() {
               </li>)}
             </ul>
           </section>}
+          {projects.length > 0 && <section className="experience-backlinks" aria-labelledby="person-projects">
+            <h2 className="section-title" id="person-projects">人脉项目</h2>
+            <ul className="experience-people">
+              {projects.map(({ project, member }) => <li key={project.id}>
+                <Link className="project-contact" to={`/projects/${encodeURIComponent(project.id)}`}>{project.name}</Link>
+                {member.role && <span className="hint"> · {member.role}</span>}
+                {project.archived && <span className="hint"> · 已归档</span>}
+              </li>)}
+            </ul>
+          </section>}
         </div>
 
         <div className="card contact-profile-info">
@@ -223,7 +238,8 @@ export function PersonDetailPage() {
         title="删除人物"
         message={deleteMessage
           + (experiences.length ? ` 将从 ${experiences.length} 条共同经历移除此参与人，经历仍会保留。` : '')
-          + (introductions.length ? ` ${introductions.length} 条引荐将保留，并标记该档案已移除。` : '')}
+          + (introductions.length ? ` ${introductions.length} 条引荐将保留，并标记该档案已移除。` : '')
+          + (projects.length ? ` 将退出 ${projects.length} 个项目，关联待办仍会保留。` : '')}
         confirmLabel="删除"
         destructive
         onClose={() => setPendingDeletePerson(false)}

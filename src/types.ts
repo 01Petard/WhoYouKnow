@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 不导入任何模块；定义 store、util、components、pages 共用的领域模型
- * [OUTPUT]: 导出联系人、联系手记、共同经历、引荐、分类、备份和筛选模型。
- * [POS]: people 保存联系人，me 保存当前用户。共同经历和引荐按联系人编号关联参与人。
+ * [OUTPUT]: 导出联系人、手记、工作台、分类、备份和筛选模型。
+ * [POS]: people 保存联系人，me 保存当前用户。工作台记录按联系人编号关联档案。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 export type Gender = '男' | '女' | '其他'
@@ -49,6 +49,35 @@ export interface Introduction {
 
 export type IntroductionInput = Omit<Introduction, 'id' | 'updatedAt'>
 
+export interface ProjectMember {
+  /** 联系人编号，在单个项目内唯一。 */
+  id: string
+  role: string
+  progress: string
+  updatedAt: string
+}
+
+export interface ProjectTask {
+  id: string
+  title: string
+  done: boolean
+  due: string
+  memberId?: string
+  updatedAt: string
+}
+
+export interface PeopleProject {
+  id: string
+  name: string
+  description: string
+  archived: boolean
+  members: ProjectMember[]
+  tasks: ProjectTask[]
+  updatedAt: string
+}
+
+export type PeopleProjectInput = Omit<PeopleProject, 'id' | 'updatedAt'>
+
 export interface Person {
   id: string
   name: string
@@ -94,6 +123,7 @@ export interface AppData {
   circles: Circle[]
   experiences?: Experience[]
   introductions?: Introduction[]
+  projects?: PeopleProject[]
   /** 当前用户自己的资料，单独于 people 管理；null = 尚未创建「我的信息」 */
   me: Person | null
 }

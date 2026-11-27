@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 zustand 的 create；依赖 ../types 全部领域类型；依赖 ../util/constants 的 DATA_VERSION；依赖 ../util/id 的 today/uid；依赖 ../util/csv 的 ParsedCsvRow；依赖 ../util/storage 的 bootstrap/persist/reloadFromFile
  * [OUTPUT]: 导出 useStore、UiState、emptyData，并再导出 today
- * [POS]: 写入联系人、联系手记、共同经历、引荐和我的资料。常规改动即时更新界面，备份恢复等待持久化。
+ * [POS]: 写入联系人、联系手记、工作台和我的资料。常规改动即时更新界面，备份恢复等待持久化。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { create } from 'zustand'
@@ -12,6 +12,7 @@ import {
   type ExperienceInput,
   type FilterState,
   type IntroductionInput,
+  type PeopleProjectInput,
   type Person,
   type PeopleView,
   type PersonInput,
@@ -21,6 +22,7 @@ import { isContactMethod } from '../util/contactJournal'
 import { DATA_VERSION } from '../util/constants'
 import { isDateOnly, today, uid } from '../util/id'
 import { introductionIssue, introductionRoles } from '../util/introductions'
+import { filterProjectMembers, isProjectInput } from '../util/projects'
 import type { ParsedCsvRow } from '../util/csv'
 import { bootstrap, persist, reloadFromFile, type PersistResult } from '../util/storage'
 
@@ -55,12 +57,13 @@ interface Persisted {
 
 const nowIso = () => new Date().toISOString()
 
-function removeExperienceParticipant(data: AppData, id: string): Pick<AppData, 'experiences'> {
-  if (!data.experiences) return {}
+function removeContactMemberships(data: AppData, id: string): Pick<AppData, 'experiences' | 'projects'> {
+  const peopleIds = new Set(data.people.filter((person) => person.id !== id).map((person) => person.id))
   return {
-    experiences: data.experiences.map((item) => item.participantIds.includes(id)
+    experiences: data.experiences?.map((item) => item.participantIds.includes(id)
       ? { ...item, participantIds: item.participantIds.filter((personId) => personId !== id) }
       : item),
+    projects: data.projects?.map((project) => filterProjectMembers(project, peopleIds)),
   }
 }
 
@@ -131,11 +134,12 @@ interface Store extends Persisted {
   saveExperience: (input: ExperienceInput, id?: string) => string | null
   deleteExperience: (id: string) => boolean
   saveIntroduction: (input: IntroductionInput, id?: string) => string | null
+  saveProject: (input: PeopleProjectInput, id?: string) => string | null
   /** 创建当前用户资料；已存在则失败 */
   createMe: (input: PersonInput) => boolean
   /** 更新当前用户资料；未创建则失败 */
   updateMe: (input: PersonInput) => boolean
-  /** 把一位已有联系人迁移成「我」，解除此人作为共同经历参与人的关联。 */
+  /** 把一位已有联系人迁移成「我」，解除此人的经历与项目成员关联。 */
   adoptAsMe: (personId: string) => boolean
   setLastContact: (id: string, date?: string) => boolean
   saveContactEntry: (personId: string, input: ContactEntryInput, entryId?: string) => boolean
@@ -298,7 +302,7 @@ export const useStore = create<Store>((set, get) => {
         data: {
           ...data,
           people: data.people.filter((p) => p.id !== id),
-          ...removeExperienceParticipant(data, id),
+          ...removeContactMemberships(data, id),
         },
       })
     },
@@ -345,6 +349,22 @@ export const useStore = create<Store>((set, get) => {
       return commit({ data: { ...data, introductions: next } }) ? entry.id : null
     },
 
+    saveProject(input, id) {
+      const data = get().data
+      const projects = data.projects ?? []
+      const previous = projects.find((item) => item.id === id)
+      if ((id && !previous) || !isProjectInput(input)) return null
+      const peopleIds = new Set(data.people.map((person) => person.id))
+      if (input.members.some((member) => !peopleIds.has(member.id))) return null
+      const memberIds = new Set(input.members.map((member) => member.id))
+      const earlierTasks = new Map(previous?.tasks.map((task) => [task.id, task.memberId]))
+      if (input.tasks.some((task) => task.memberId && !memberIds.has(task.memberId)
+        && earlierTasks.get(task.id) !== task.memberId)) return null
+      const updated = { ...input, id: id ?? uid(), name: input.name.trim(), description: input.description.trim(), updatedAt: nowIso() }
+      const next = previous ? projects.map((item) => item === previous ? updated : item) : [...projects, updated]
+      return commit({ data: { ...data, projects: next } }) ? updated.id : null
+    },
+
     createMe(input) {
       const data = get().data
       if (data.me) return false
@@ -376,7 +396,7 @@ export const useStore = create<Store>((set, get) => {
           ...data,
           me: person,
           people: data.people.filter((p) => p.id !== personId),
-          ...removeExperienceParticipant(data, personId),
+          ...removeContactMemberships(data, personId),
         },
       })
     },

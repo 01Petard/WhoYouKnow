@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 使用 Node test、模拟文件 API 和浏览器存储。
- * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系、事务目录、手记、共同经历和引荐的回归测试。
+ * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、联系人、手记与工作台记录的回归测试。
  * [POS]: 验证核心数据流程，不访问项目真实数据文件。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -406,4 +406,60 @@ test('引荐离线修改缘由与远端更新进展合并，恢复时保留独�
   assert.deepEqual(f.file.introductions.map(({ id, reason, status }) => [id, reason, status]), [
     ['intro', '补记', 'requested'], ['other', '原因', 'pending'],
   ])
+})
+
+test('项目各自保存成员角色，成员删除后保留待办和到期日，归档状态可重新打开', async () => {
+  const initial = { ...empty, people: [person('甲')] }
+  const f = fixture(initial)
+  const { useStore } = await import('../src/store/useStore.ts?projects')
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  const { overdueTask } = await import('../src/util/projects.ts')
+  const store = () => useStore.getState()
+  await store().hydrate()
+  const member = { id: '甲', role: '组织者', progress: '联系场地', updatedAt: '2025-05-04' }
+  const task = { id: 'task', title: '确认场地', due: '2025-05-06', done: true, memberId: '甲', updatedAt: '2025-05-05' }
+  const draft = { name: '聚会', description: '十周年', archived: false, members: [member], tasks: [task] }
+  const first = store().saveProject(draft)
+  const second = store().saveProject({ ...draft, name: '产品', members: [{ ...member, role: '设计师' }] })
+  assert.ok(first && second && first !== second)
+  assert.equal(store().saveProject({ ...draft, members: [member, member] }), null)
+  assert.equal(store().saveProject({ ...draft, members: [{ ...member, role: '召集人' }], archived: true }, first), first)
+  const projects = () => store().data.projects
+  assert.equal(projects()[1].members[0].role, '设计师')
+  assert.equal(projects()[0].archived, true)
+  assert.equal(store().saveProject({ ...projects()[0], archived: false }, first), first)
+  assert.deepEqual(projects()[0].tasks, [task])
+  assert.equal(store().saveProject({ ...projects()[0], members: [] }, first), first)
+  assert.deepEqual(projects()[0].tasks, [task])
+  assert.equal(store().deletePerson('甲'), true)
+  assert.deepEqual(projects()[1].members, [])
+  assert.equal((await store().storageSettled()).ok, true)
+  const backup = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
+  assert.equal(backup.ok, true)
+  assert.deepEqual(backup.data.projects.map((project) => project.tasks), [[task], [task]])
+  assert.equal(overdueTask('2025-05-06', '2025-05-06'), false)
+  assert.equal(overdueTask('2025-05-06', '2025-05-07'), true)
+})
+
+test('同一项目的独立成员与待办修改可在离线重试时合并', async () => {
+  const member = { id: '甲', role: '', progress: '', updatedAt: '' }
+  const task = { id: 'task', title: '确认场地', due: '', done: false, updatedAt: '' }
+  const project = { id: 'work', name: '聚会', description: '', archived: false, members: [member], tasks: [task], updatedAt: '' }
+  const initial = { ...empty, people: [person('甲')], projects: [project] }
+  const f = fixture(initial)
+  const tab = await storage('project-offline')
+  const base = (await tab.bootstrap({ data: empty })).snapshot.data
+  f.offline(true)
+  assert.equal((await tab.persist({ data: { ...initial, projects: [{
+    ...project, tasks: [{ ...task, due: '2025-05-06', updatedAt: '2025-05-05' }], updatedAt: '2025-05-05',
+  }] } }, base)).kind, 'local')
+  f.replaceFile({ ...initial, projects: [{
+    ...project, members: [{ ...member, role: '设计师', updatedAt: '2025-05-06' }],
+    tasks: [{ ...task, done: true, updatedAt: '2025-05-06' }], updatedAt: '2025-05-06',
+  }] })
+  f.offline(false)
+  assert.equal((await (await storage('project-reopened')).bootstrap({ data: empty })).kind, 'file')
+  assert.equal(f.file.projects[0].members[0].role, '设计师')
+  assert.equal(f.file.projects[0].tasks[0].done, true)
+  assert.equal(f.file.projects[0].tasks[0].due, '2025-05-06')
 })

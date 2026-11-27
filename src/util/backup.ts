@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 读取数据版本、业务模型和引荐校验规则。使用浏览器 FileReader 读取备份。
+ * [INPUT]: 读取数据版本、业务模型和工作台校验规则。使用浏览器 FileReader 读取备份。
  * [OUTPUT]: 导出 ValidationResult、validateBackup、makeBackup、readJsonFile、readTextFile
- * [POS]: 校验与序列化 JSON 备份。旧 selfId 迁移为 me。共同经历保留有效的参与人引用。
+ * [POS]: 校验与序列化 JSON 备份。旧 selfId 迁移为 me。移除失效的参与人和项目成员引用。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, BackupFile, Circle, ContactEntry, Experience, Gender, Person } from '../types'
@@ -9,6 +9,7 @@ import { DATA_VERSION } from './constants'
 import { isContactMethod } from './contactJournal'
 import { isDateOnly } from './id'
 import { readIntroductions } from './introductions'
+import { filterProjectMembers, readProjects } from './projects'
 
 export type ValidationResult =
   | { ok: true; data: AppData; exportedAt?: string }
@@ -177,6 +178,9 @@ export function validateBackup(raw: unknown): ValidationResult {
 
   const introductions = raw.introductions === undefined ? undefined : readIntroductions(raw.introductions)
   if (introductions === null) return { ok: false, reason: '引荐包含重复编号或无效字段' }
+  const projects = raw.projects === undefined ? undefined : readProjects(raw.projects)
+  if (projects === null) return { ok: false, reason: '人脉项目包含重复编号或无效字段' }
+  const peopleIds = new Set(peopleById.keys())
 
   return {
     ok: true,
@@ -188,6 +192,7 @@ export function validateBackup(raw: unknown): ValidationResult {
       circles,
       ...(raw.experiences !== undefined ? { experiences } : {}),
       ...(introductions ? { introductions } : {}),
+      ...(projects ? { projects: projects.map((project) => filterProjectMembers(project, peopleIds)) } : {}),
       me,
     },
     exportedAt: typeof (raw as Record<string, unknown>).exportedAt === 'string'

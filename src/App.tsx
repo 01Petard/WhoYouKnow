@@ -11,6 +11,7 @@ import { Layout, WorkspaceMenu } from './components/Layout'
 import { ContactJournalPage } from './pages/ContactJournalPage'
 import { ExperiencesPage } from './pages/ExperiencesPage'
 import { IntroductionsPage } from './pages/IntroductionsPage'
+import { ProjectsPage } from './pages/ProjectsPage'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonFormPage } from './pages/PersonFormPage'
 import { PersonDetailPage } from './pages/PersonDetailPage'
@@ -71,6 +72,8 @@ export default function App() {
         <Route path="/experiences/:id" element={<ExperiencesPage key="detail" />} />
         <Route path="/introductions" element={<IntroductionsPage key="list" />} />
         <Route path="/introductions/:id" element={<IntroductionsPage key="detail" />} />
+        <Route path="/projects" element={<ProjectsPage key="list" />} />
+        <Route path="/projects/:id" element={<ProjectsPage key="detail" />} />
         <Route path="/workspaces" element={<WorkspaceMenu />} />
         <Route path="/person/new" element={<PersonFormPage />} />
         <Route path="/person/:id" element={<PersonDetailPage />} />
