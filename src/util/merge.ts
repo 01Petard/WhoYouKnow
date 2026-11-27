@@ -1,8 +1,8 @@
 /**
- * [INPUT]: 读取联系人、联系手记、分类及共同经历的业务快照。
+ * [INPUT]: 读取联系人、联系手记、分类、共同经历及引荐的业务快照。
  * [OUTPUT]: 导出 mergeData，用于多标签页写入冲突时的三方合并
  * [POS]: 存储层的纯函数边界；base=本页最后同步的版本，local=本页当前数据，remote=数据文件中的最新数据。
- *        手记和共同经历按编号合并。参与人按集合合并，再过滤已移除的联系人。
+ *        手记、共同经历和引荐按编号合并。经历参与人按集合合并，再过滤已移除的联系人。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, Circle, ContactEntry, Person } from '../types'
@@ -134,6 +134,9 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
       participantIds: item.participantIds.filter((id) => peopleIds.has(id)),
     }))
     : undefined
+  const introductions = local.introductions || remote.introductions || base.introductions
+    ? mergeRecords(base.introductions ?? [], local.introductions ?? [], remote.introductions ?? [])
+    : undefined
   return {
     version: Math.max(base.version, local.version, remote.version),
     people,
@@ -141,6 +144,7 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
     groups: mergeNames(base.groups, local.groups, remote.groups),
     circles,
     ...(experiences ? { experiences } : {}),
+    ...(introductions ? { introductions } : {}),
     me,
   }
 }

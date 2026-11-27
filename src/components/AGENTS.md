@@ -9,7 +9,7 @@
 - `EmptyState.tsx` 展示空状态与下一步操作。
 - `DateField.tsx` 提供手输日期与站内月历。
 - `FacetFilters.tsx` 按维度分行展示可多选的筛选选项。
-- `Layout.tsx` 装配响应式导航、路由内容与保存状态。
+- `Layout.tsx` 装配导航、路由内容与保存状态。桌面侧栏列出各功能，移动端工作台汇总入口。
 - `Logo.tsx` 加载导航与欢迎页共用的品牌图标。
 - `Modal.tsx` 提供对话框、焦点管理与操作确认。
 - `NetworkGraph.tsx` 渲染关系网和图例。按分组时标注全部有成员的分组。

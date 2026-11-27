@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 不导入任何模块；定义 store、util、components、pages 共用的领域模型
- * [OUTPUT]: 导出联系人、联系手记、共同经历、分类、备份和筛选模型。
- * [POS]: people 保存联系人，me 保存当前用户。共同经历按联系人编号关联参与人。
+ * [OUTPUT]: 导出联系人、联系手记、共同经历、引荐、分类、备份和筛选模型。
+ * [POS]: people 保存联系人，me 保存当前用户。共同经历和引荐按联系人编号关联参与人。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 export type Gender = '男' | '女' | '其他'
@@ -29,6 +29,25 @@ export interface Experience {
 }
 
 export type ExperienceInput = Omit<Experience, 'id' | 'updatedAt'>
+
+export type IntroductionParty =
+  | { kind: 'self' }
+  | { kind: 'contact'; personId: string; name: string }
+  | { kind: 'unlisted'; name: string }
+
+export type IntroductionRole = 'requester' | 'introducer' | 'target'
+export type IntroductionStatus = 'pending' | 'requested' | 'completed' | 'closed'
+
+export interface Introduction {
+  id: string
+  parties: Record<IntroductionRole, IntroductionParty>
+  status: IntroductionStatus
+  reason: string
+  date: string
+  updatedAt: string
+}
+
+export type IntroductionInput = Omit<Introduction, 'id' | 'updatedAt'>
 
 export interface Person {
   id: string
@@ -74,6 +93,7 @@ export interface AppData {
   groups: string[]
   circles: Circle[]
   experiences?: Experience[]
+  introductions?: Introduction[]
   /** 当前用户自己的资料，单独于 people 管理；null = 尚未创建「我的信息」 */
   me: Person | null
 }

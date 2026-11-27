@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 zustand 的 create；依赖 ../types 全部领域类型；依赖 ../util/constants 的 DATA_VERSION；依赖 ../util/id 的 today/uid；依赖 ../util/csv 的 ParsedCsvRow；依赖 ../util/storage 的 bootstrap/persist/reloadFromFile
  * [OUTPUT]: 导出 useStore、UiState、emptyData，并再导出 today
- * [POS]: 写入联系人、联系手记、共同经历和我的资料。常规改动即时更新界面，备份恢复等待持久化。
+ * [POS]: 写入联系人、联系手记、共同经历、引荐和我的资料。常规改动即时更新界面，备份恢复等待持久化。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { create } from 'zustand'
@@ -11,6 +11,7 @@ import {
   type ContactEntryInput,
   type ExperienceInput,
   type FilterState,
+  type IntroductionInput,
   type Person,
   type PeopleView,
   type PersonInput,
@@ -19,6 +20,7 @@ import {
 import { isContactMethod } from '../util/contactJournal'
 import { DATA_VERSION } from '../util/constants'
 import { isDateOnly, today, uid } from '../util/id'
+import { introductionIssue, introductionRoles } from '../util/introductions'
 import type { ParsedCsvRow } from '../util/csv'
 import { bootstrap, persist, reloadFromFile, type PersistResult } from '../util/storage'
 
@@ -128,6 +130,7 @@ interface Store extends Persisted {
   deletePerson: (id: string) => boolean
   saveExperience: (input: ExperienceInput, id?: string) => string | null
   deleteExperience: (id: string) => boolean
+  saveIntroduction: (input: IntroductionInput, id?: string) => string | null
   /** 创建当前用户资料；已存在则失败 */
   createMe: (input: PersonInput) => boolean
   /** 更新当前用户资料；未创建则失败 */
@@ -320,6 +323,26 @@ export const useStore = create<Store>((set, get) => {
       const data = get().data
       if (!data.experiences?.some((item) => item.id === id)) return false
       return commit({ data: { ...data, experiences: data.experiences.filter((item) => item.id !== id) } })
+    },
+
+    saveIntroduction(input, id) {
+      const data = get().data
+      const introductions = data.introductions ?? []
+      const previous = introductions.find((item) => item.id === id)
+      if ((id && !previous) || introductionIssue(input)) return null
+      const people = new Map(data.people.map((person) => [person.id, person]))
+      const parties = { ...input.parties }
+      for (const role of introductionRoles) {
+        const party = parties[role]
+        if (party.kind !== 'contact') continue
+        const person = people.get(party.personId)
+        const former = previous?.parties[role]
+        if (!person && (former?.kind !== 'contact' || former.personId !== party.personId)) return null
+        parties[role] = { ...party, name: person?.name ?? (former?.kind === 'contact' ? former.name : party.name) }
+      }
+      const entry = { ...input, parties, id: id ?? uid(), reason: input.reason.trim(), updatedAt: nowIso() }
+      const next = previous ? introductions.map((item) => item === previous ? entry : item) : [...introductions, entry]
+      return commit({ data: { ...data, introductions: next } }) ? entry.id : null
     },
 
     createMe(input) {

@@ -2,9 +2,9 @@
 
 > L2 | Parent: [../AGENTS.md](../AGENTS.md)
 
-- `App.tsx` 装配人脉、联系手记和共同经历等路由。启动和重连时同步数据。
+- `App.tsx` 装配人脉、联系手记、工作台及其各项功能路由。启动和重连时同步数据。
 - `main.tsx` 挂载 React、路由、提示与样式。
-- `types.ts` 定义联系人、事务目录、共同经历、分类、存储和筛选模型。
+- `types.ts` 定义联系人、事务目录、共同经历、引荐、分类、存储和筛选模型。
 - [components](components/AGENTS.md) 放置跨页面组件。
 - [pages](pages/AGENTS.md) 放置路由页面和设置面板。
 - [store](store/AGENTS.md) 持有业务快照和界面状态。

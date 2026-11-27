@@ -1,12 +1,12 @@
 /**
  * [INPUT]: 依赖路由匹配、存储状态、品牌图标与联系人头像。
- * [OUTPUT]: 导出 Layout。
- * [POS]: 在桌面侧栏和移动端底部导航提供相同入口，并在页面上方显示保存状态。
+ * [OUTPUT]: 导出 Layout 和 WorkspaceMenu。
+ * [POS]: 桌面侧栏直达各功能，移动端从工作台进入，页面上方显示保存状态。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { BookUser, CalendarDays, ChevronRight, Folders, Network, Settings, UserRound } from 'lucide-react'
+import { BookUser, CalendarDays, ChevronRight, Folders, Handshake, LayoutGrid, Network, Settings, UserRound } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Alert } from './Alert'
 import { Logo } from './Logo'
@@ -15,16 +15,38 @@ import { Avatar } from './PersonCard'
 const NAV = [
   { to: '/people', label: '人脉', Icon: BookUser },
   { to: '/network', label: '关系网', Icon: Network },
-  { to: '/experiences', label: '共同经历', Icon: CalendarDays },
   { to: '/categories', label: '整理分类', Icon: Folders },
   { to: '/settings', label: '系统设置', Icon: Settings },
 ] as const
+
+const WORKSPACES = [
+  { to: '/experiences', label: '共同经历', Icon: CalendarDays },
+  { to: '/introductions', label: '引荐', Icon: Handshake },
+] as const
+
+const WORKSPACE_MENU = { to: '/workspaces', label: '工作台', Icon: LayoutGrid } as const
 
 const PROFILE = { to: '/profile', label: '我的信息', Icon: UserRound } as const
 
 function isSectionActive(pathname: string, to: string): boolean {
   if (to === '/people') return pathname === '/people' || pathname === '/journal' || pathname.startsWith('/person/')
+  if (to === WORKSPACE_MENU.to && WORKSPACES.some((item) => isSectionActive(pathname, item.to))) return true
   return pathname === to || pathname.startsWith(`${to}/`)
+}
+
+export function WorkspaceMenu() {
+  return <div className="content">
+    <header className="page-header"><h1 className="page-title">工作台</h1></header>
+    <ul className="workspace-menu">
+      {WORKSPACES.map(({ to, label, Icon }) => <li key={to}>
+        <Link className="card workspace-menu-link" to={to}>
+          <Icon size={20} aria-hidden="true" />
+          <strong>{label}</strong>
+          <ChevronRight size={18} aria-hidden="true" />
+        </Link>
+      </li>)}
+    </ul>
+  </div>
 }
 
 function parentOf(pathname: string): string | null {
@@ -63,7 +85,7 @@ export function Layout() {
         </Link>
         <nav className="sidebar-nav" aria-label="主导航">
           <div className="sidebar-links">
-            {NAV.map(({ to, label, Icon }) => (
+            {[...NAV.slice(0, 2), ...WORKSPACES, ...NAV.slice(2)].map(({ to, label, Icon }) => (
               <Link
                 key={to}
                 to={to}
@@ -115,7 +137,7 @@ export function Layout() {
       </main>
 
       <nav className="tabbar" aria-label="主导航">
-        {[...NAV, PROFILE].map(({ to, label, Icon }) => (
+        {[...NAV.slice(0, 2), WORKSPACE_MENU, ...NAV.slice(2), PROFILE].map(({ to, label, Icon }) => (
           <Link
             key={to}
             to={to}

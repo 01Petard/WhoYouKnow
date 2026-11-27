@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 复用主题 Token、卡片、表单和导航样式。
- * [OUTPUT]: 定义共同经历时间线、详情和参与人选择样式。
- * [POS]: 共同经历页面及联系人档案中的事件区域。
+ * [OUTPUT]: 定义时间线、详情、参与人选择和引荐路径样式。
+ * [POS]: 服务共同经历、引荐和联系人档案中的原记录链接。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 .experiences-page { overflow-wrap: anywhere; }
@@ -39,4 +39,26 @@
 @media (max-width: 540px) {
   .experience-timeline a { grid-template-columns: minmax(0, 1fr) auto; }
   .experience-timeline time { grid-column: 1 / -1; }
+}
+
+.introduction-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(8rem, 1fr));
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.introduction-path {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin: var(--sp-3) 0;
+}
+.introduction-path > div { padding: var(--sp-3); background: var(--bg-surface); border: 1px solid var(--border-subtle); }
+.introduction-path dt { color: var(--text-secondary); }
+.introduction-path dd { margin: var(--sp-1) 0 0; overflow-wrap: anywhere; }
+.introduction-path + h2 + p + button { margin-top: var(--sp-4); }
+@media (max-width: 540px) {
+  .introduction-filters, .introduction-path { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .introduction-filters input { grid-column: 1 / -1; }
+  .introduction-path { grid-template-columns: minmax(0, 1fr); }
 }

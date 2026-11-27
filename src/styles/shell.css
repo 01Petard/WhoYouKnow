@@ -134,3 +134,14 @@
   .sidebar-profile-copy strong { color: var(--text-heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sidebar-profile-copy > span { color: var(--text-secondary); font-size: 12px; font-weight: var(--fw-regular); }
 }
+
+.workspace-menu {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--sp-3);
+  list-style: none;
+  padding: 0;
+}
+.workspace-menu-link { display: flex; align-items: center; gap: var(--sp-3); }
+.workspace-menu-link strong { flex: 1; }
+.workspace-menu-link:hover { color: var(--color-action-active); }

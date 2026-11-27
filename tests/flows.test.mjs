@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 使用 Node test、模拟文件 API 和浏览器存储。
- * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系、事务目录、手记和共同经历的回归测试。
+ * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系、事务目录、手记、共同经历和引荐的回归测试。
  * [POS]: 验证核心数据流程，不访问项目真实数据文件。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -351,4 +351,59 @@ test('共同经历离线草稿重试时合并不同字段、并发新增参与�
   assert.equal(f.file.experiences[0].note, '离线补记')
   assert.equal(f.file.experiences[0].place, '远端地点')
   assert.deepEqual(new Set(f.file.experiences[0].participantIds), new Set(['乙', '丙']))
+})
+
+test('引荐校验三方、保留原编号，并在档案删除和恢复后保留角色与进展', async () => {
+  const initial = { ...empty, people: [person('介绍人'), person('新档案', { tags: ['校友'] })] }
+  const f = fixture(initial)
+  const { useStore } = await import('../src/store/useStore.ts?introductions')
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  const { introductionPartyName } = await import('../src/util/introductions.ts')
+  const store = () => useStore.getState()
+  await store().hydrate()
+  const self = { kind: 'self' }
+  const contact = { kind: 'contact', personId: '介绍人', name: '介绍人' }
+  const target = { kind: 'unlisted', name: '临时姓名' }
+  const draft = { parties: { requester: self, introducer: contact, target }, date: '2025-05-04', reason: '想请教', status: 'pending' }
+  assert.equal(store().saveIntroduction({ ...draft, parties: { ...draft.parties, requester: contact } }), null)
+  assert.equal(store().saveIntroduction({ ...draft, parties: { ...draft.parties, introducer: self } }), null)
+  const id = store().saveIntroduction(draft)
+  assert.ok(id)
+  assert.ok(store().saveIntroduction({ ...draft, parties: { requester: contact, introducer: self, target } }))
+  const linked = {
+    ...draft, status: 'completed',
+    parties: { ...draft.parties, target: { kind: 'contact', personId: '新档案', name: '临时姓名' } },
+  }
+  assert.equal(store().saveIntroduction(linked, id), id)
+  assert.equal(store().data.introductions.find((item) => item.id === id).parties.target.name, '新档案')
+  assert.equal(store().deletePerson('介绍人'), true)
+  assert.equal(store().saveIntroduction({ ...linked, status: 'closed' }, id), id)
+  assert.equal((await store().storageSettled()).ok, true)
+  const backup = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
+  assert.equal(backup.ok, true)
+  const saved = backup.data.introductions.find((item) => item.id === id)
+  assert.equal(saved.status, 'closed')
+  assert.equal(saved.parties.introducer.personId, '介绍人')
+  assert.equal(introductionPartyName(saved.parties.introducer, new Map()), '介绍人')
+  assert.equal(saved.parties.target.personId, '新档案')
+  assert.equal(validateBackup({ ...initial, introductions: [{ ...saved, status: 'toString' }] }).ok, false)
+})
+
+test('引荐离线修改缘由与远端更新进展合并，恢复时保留独立记录', async () => {
+  const item = {
+    id: 'intro', parties: { requester: { kind: 'self' }, introducer: { kind: 'contact', personId: '甲', name: '甲' }, target: { kind: 'unlisted', name: '乙' } },
+    date: '2025-05-04', reason: '原因', status: 'pending', updatedAt: '',
+  }
+  const initial = { ...empty, people: [person('甲')], introductions: [item] }
+  const f = fixture(initial)
+  const tab = await storage('introductions-offline')
+  const base = (await tab.bootstrap({ data: empty })).snapshot.data
+  f.offline(true)
+  assert.equal((await tab.persist({ data: { ...initial, introductions: [{ ...item, reason: '补记', updatedAt: '2025-05-05' }] } }, base)).kind, 'local')
+  f.replaceFile({ ...initial, introductions: [{ ...item, status: 'requested', updatedAt: '2025-05-06' }, { ...item, id: 'other' }] })
+  f.offline(false)
+  assert.equal((await (await storage('introductions-reopened')).bootstrap({ data: empty })).kind, 'file')
+  assert.deepEqual(f.file.introductions.map(({ id, reason, status }) => [id, reason, status]), [
+    ['intro', '补记', 'requested'], ['other', '原因', 'pending'],
+  ])
 })

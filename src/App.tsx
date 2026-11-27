@@ -7,9 +7,10 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useStore } from './store/useStore'
-import { Layout } from './components/Layout'
+import { Layout, WorkspaceMenu } from './components/Layout'
 import { ContactJournalPage } from './pages/ContactJournalPage'
 import { ExperiencesPage } from './pages/ExperiencesPage'
+import { IntroductionsPage } from './pages/IntroductionsPage'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonFormPage } from './pages/PersonFormPage'
 import { PersonDetailPage } from './pages/PersonDetailPage'
@@ -68,6 +69,9 @@ export default function App() {
         <Route path="/journal" element={<ContactJournalPage />} />
         <Route path="/experiences" element={<ExperiencesPage key="list" />} />
         <Route path="/experiences/:id" element={<ExperiencesPage key="detail" />} />
+        <Route path="/introductions" element={<IntroductionsPage key="list" />} />
+        <Route path="/introductions/:id" element={<IntroductionsPage key="detail" />} />
+        <Route path="/workspaces" element={<WorkspaceMenu />} />
         <Route path="/person/new" element={<PersonFormPage />} />
         <Route path="/person/:id" element={<PersonDetailPage />} />
         <Route path="/person/:id/edit" element={<PersonFormPage />} />
