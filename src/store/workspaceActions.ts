@@ -4,21 +4,16 @@
  * [POS]: 工作台的写入边界。保存往来状态与发生日期时沿用原编号。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, City, CityTripInput, ExchangeInput, ExperienceInput, IntroductionInput, PeopleProjectInput, RelationshipReview } from '../types'
-import { cityKey, cityPeople, isCity, isTripInput, normalizeCity, uniqueCities } from '../util/cities'
+import type { AppData, ExchangeInput, ExperienceInput, IntroductionInput, RelationshipReview } from '../types'
 import { isDateOnly, today, uid } from '../util/id'
 import { validExchange } from '../util/exchanges'
 import { readReviews } from '../util/reviews'
 import { introductionIssue, introductionRoles } from '../util/introductions'
-import { isProjectInput } from '../util/projects'
 
 export interface WorkspaceActions {
   saveExperience: (input: ExperienceInput, id?: string) => string | null
   deleteExperience: (id: string) => boolean
   saveIntroduction: (input: IntroductionInput, id?: string) => string | null
-  saveProject: (input: PeopleProjectInput, id?: string) => string | null
-  setContactCities: (id: string, currentCity: City | undefined, pastCities: City[]) => boolean
-  saveTrip: (input: CityTripInput, id?: string) => string | null
   saveExchange: (input: ExchangeInput, id?: string) => string | null
   deleteExchange: (id: string) => boolean
   saveReview: (review: Omit<RelationshipReview, 'updatedAt'>) => boolean
@@ -67,49 +62,6 @@ export function workspaceActions(readData: () => AppData, commit: (patch: { data
       const entry = { ...input, parties, id: id ?? uid(), reason: input.reason.trim(), updatedAt: nowIso() }
       const next = previous ? introductions.map((item) => item === previous ? entry : item) : [...introductions, entry]
       return commit({ data: { ...data, introductions: next } }) ? entry.id : null
-    },
-
-    saveProject(input, id) {
-      const data = readData()
-      const projects = data.projects ?? []
-      const previous = projects.find((item) => item.id === id)
-      if ((id && !previous) || !isProjectInput(input)) return null
-      const peopleIds = new Set(data.people.map((person) => person.id))
-      if (input.members.some((member) => !peopleIds.has(member.id))) return null
-      const memberIds = new Set(input.members.map((member) => member.id))
-      const earlierTasks = new Map(previous?.tasks.map((task) => [task.id, task.memberId]))
-      if (input.tasks.some((task) => task.memberId && !memberIds.has(task.memberId)
-        && earlierTasks.get(task.id) !== task.memberId)) return null
-      const updated = { ...input, id: id ?? uid(), name: input.name.trim(), description: input.description.trim(), updatedAt: nowIso() }
-      const next = previous ? projects.map((item) => item === previous ? updated : item) : [...projects, updated]
-      return commit({ data: { ...data, projects: next } }) ? updated.id : null
-    },
-
-    setContactCities(id, currentCity, pastCities) {
-      const data = readData()
-      if ((currentCity && !isCity(currentCity)) || pastCities.some((city) => !isCity(city))) return false
-      if (!data.people.some((person) => person.id === id)) return false
-      const current = currentCity ? normalizeCity(currentCity) : undefined
-      const past = uniqueCities(pastCities).filter((city) => !current || cityKey(city) !== cityKey(current))
-      const people = data.people.map((person) => person.id === id
-        ? { ...person, currentCity: current, pastCities: past, updatedAt: nowIso() }
-        : person)
-      return commit({ data: { ...data, people } })
-    },
-
-    saveTrip(input, id) {
-      const data = readData()
-      const trips = data.trips ?? []
-      const previous = trips.find((trip) => trip.id === id)
-      if ((id && !previous) || !isTripInput(input)) return null
-      const people = new Set(data.people.map((person) => person.id))
-      const listed = cityPeople(data.people, input.city)
-      const allowed = new Set([...listed.current.map((person) => person.id), ...listed.past.map((person) => person.id),
-        ...(previous?.visits.map((visit) => visit.id) ?? [])])
-      if (input.visits.some((visit) => !people.has(visit.id) || !allowed.has(visit.id))) return null
-      const trip = { ...input, city: normalizeCity(input.city), id: id ?? uid(), updatedAt: nowIso() }
-      const next = previous ? trips.map((item) => item === previous ? trip : item) : [...trips, trip]
-      return commit({ data: { ...data, trips: next } }) ? trip.id : null
     },
 
     saveExchange(input, id) {

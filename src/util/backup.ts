@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 读取数据版本、业务模型和工作台校验规则。使用浏览器 FileReader 读取备份。
  * [OUTPUT]: 导出 ValidationResult、validateBackup、makeBackup、readJsonFile、readTextFile
- * [POS]: 校验与序列化 JSON 备份。旧 selfId 迁移为 me。移除失效的参与人和项目成员引用。
+ * [POS]: 校验与序列化 JSON 备份。旧 selfId 迁移为 me。历史工作台字段随备份保留。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, BackupFile, Circle, ContactEntry, Experience, Gender, Person } from '../types'
@@ -9,8 +9,7 @@ import { DATA_VERSION } from './constants'
 import { isContactMethod } from './contactJournal'
 import { isDateOnly } from './id'
 import { readIntroductions } from './introductions'
-import { filterProjectMembers, readProjects } from './projects'
-import { cityKey, filterTripVisits, isCity, normalizeCity, readCityTrips, uniqueCities } from './cities'
+import { cityKey, isCity, normalizeCity, readCityTrips, readProjects, uniqueCities } from './legacyWorkspace'
 import { readExchanges } from './exchanges'
 import { readReviews } from './reviews'
 
@@ -199,7 +198,6 @@ export function validateBackup(raw: unknown): ValidationResult {
   if (exchanges === null) return { ok: false, reason: '往来记录包含重复编号或无效字段' }
   const reviews = raw.reviews === undefined ? undefined : readReviews(raw.reviews)
   if (reviews === null) return { ok: false, reason: '关系回顾包含重复编号或无效字段' }
-  const peopleIds = new Set(peopleById.keys())
 
   return {
     ok: true,
@@ -211,8 +209,8 @@ export function validateBackup(raw: unknown): ValidationResult {
       circles,
       ...(raw.experiences !== undefined ? { experiences } : {}),
       ...(introductions ? { introductions } : {}),
-      ...(projects ? { projects: projects.map((project) => filterProjectMembers(project, peopleIds)) } : {}),
-      ...(trips ? { trips: trips.map((trip) => filterTripVisits(trip, peopleIds)) } : {}),
+      ...(projects ? { projects } : {}),
+      ...(trips ? { trips } : {}),
       ...(exchanges ? { exchanges } : {}),
       ...(reviews ? { reviews } : {}),
       me,

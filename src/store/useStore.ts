@@ -18,8 +18,6 @@ import {
 import { isContactMethod } from '../util/contactJournal'
 import { DATA_VERSION } from '../util/constants'
 import { isDateOnly, today, uid } from '../util/id'
-import { filterProjectMembers } from '../util/projects'
-import { filterTripVisits } from '../util/cities'
 import { workspaceActions, type WorkspaceActions } from './workspaceActions'
 import type { ParsedCsvRow } from '../util/csv'
 import { bootstrap, persist, reloadFromFile, type PersistResult } from '../util/storage'
@@ -55,14 +53,11 @@ interface Persisted {
 
 const nowIso = () => new Date().toISOString()
 
-function removeContactMemberships(data: AppData, id: string): Pick<AppData, 'experiences' | 'projects' | 'trips'> {
-  const peopleIds = new Set(data.people.filter((person) => person.id !== id).map((person) => person.id))
+function removeExperienceParticipant(data: AppData, id: string): Pick<AppData, 'experiences'> {
   return {
     experiences: data.experiences?.map((item) => item.participantIds.includes(id)
       ? { ...item, participantIds: item.participantIds.filter((personId) => personId !== id) }
       : item),
-    projects: data.projects?.map((project) => filterProjectMembers(project, peopleIds)),
-    trips: data.trips?.map((trip) => filterTripVisits(trip, peopleIds)),
   }
 }
 
@@ -134,7 +129,7 @@ interface Store extends Persisted, WorkspaceActions {
   createMe: (input: PersonInput) => boolean
   /** 更新当前用户资料；未创建则失败 */
   updateMe: (input: PersonInput) => boolean
-  /** 把一位已有联系人迁移成「我」，解除经历、项目和行程成员关联。 */
+  /** 把一位已有联系人迁移成「我」，解除共同经历的参与人关联。 */
   adoptAsMe: (personId: string) => boolean
   setLastContact: (id: string, date?: string) => boolean
   saveContactEntry: (personId: string, input: ContactEntryInput, entryId?: string) => boolean
@@ -300,7 +295,7 @@ export const useStore = create<Store>((set, get) => {
         data: {
           ...data,
           people: data.people.filter((p) => p.id !== id),
-          ...removeContactMemberships(data, id),
+          ...removeExperienceParticipant(data, id),
         },
       })
     },
@@ -336,7 +331,7 @@ export const useStore = create<Store>((set, get) => {
           ...data,
           me: person,
           people: data.people.filter((p) => p.id !== personId),
-          ...removeContactMemberships(data, personId),
+          ...removeExperienceParticipant(data, personId),
         },
       })
     },

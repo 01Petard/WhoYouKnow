@@ -146,7 +146,7 @@ export function ExchangesPage() {
     {item ? <>
       <section className="card experience-detail" aria-label="往来详情">
         <div className="experience-meta">
-          {itemPerson ? <Link className="project-contact" to={`/person/${encodeURIComponent(item.personId)}`}>{itemPerson.name}</Link>
+          {itemPerson ? <Link className="workspace-record-link" to={`/person/${encodeURIComponent(item.personId)}`}>{itemPerson.name}</Link>
             : <span>{item.personName}（档案已移除）</span>}
           {exchangeDate(item) && <span>{item.phase.status === 'occurred' ? '实际日期' : '计划日期'} <time dateTime={exchangeDate(item)}>{exchangeDate(item)}</time></span>}
         </div>
@@ -168,7 +168,7 @@ export function ExchangesPage() {
           } else toast.show('删除失败，请重试')
         }} />
     </> : <>
-      <div className="row-actions project-status-filter" aria-label="往来状态">
+      <div className="row-actions exchange-status-filter" aria-label="往来状态">
         {tabs.map((key) => <button key={key} type="button" className={`btn ${key === tab ? 'btn-secondary' : 'btn-ghost'}`}
           aria-pressed={key === tab} onClick={() => setFilter(key, personFilter)}>{exchangeStatusLabels[key]}</button>)}
       </div>

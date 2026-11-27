@@ -62,3 +62,6 @@
   .introduction-filters input { grid-column: 1 / -1; }
   .introduction-path { grid-template-columns: minmax(0, 1fr); }
 }
+
+.workspace-record-link { font-weight: var(--fw-semibold); }
+.workspace-record-link:hover { color: var(--color-action-active); }

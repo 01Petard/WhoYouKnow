@@ -63,12 +63,12 @@ function ReviewWorkspace({ data, year }: { data: AppData; year: string }) {
         onClick={() => setTab(key)}><strong>{titles[index][1]}</strong><span>{titles[index][0]}</span></button>)}
     </div>
     <div className="review-workspace">
-      <section className="card project-section" aria-labelledby="review-sources">
+      <section className="card review-panel" aria-labelledby="review-sources">
         <header><h2 id="review-sources" className="section-title">{titles[sourceTabs.indexOf(tab)][0]}</h2></header>
         {tab === 'reconnected' && <p className="hint">同一联系人的相邻两条手记至少相隔 {reconnectGap} 天，且后一条在该年份。</p>}
         {tab === 'people' ? (stats.people.length ? <ul>
           {stats.people.map((person) => <li key={person.id}>
-            <Link className="project-contact" to={`/person/${encodeURIComponent(person.id)}#contact-history`}>{person.name}</Link>
+            <Link className="workspace-record-link" to={`/person/${encodeURIComponent(person.id)}#contact-history`}>{person.name}</Link>
             <span className="hint">{stats.journal.filter((item) => item.person.id === person.id).length} 条手记</span>
           </li>)}
         </ul> : <p className="hint">该年暂无有手记的联系人。</p>) : sources.length ? <ul>
@@ -78,7 +78,7 @@ function ReviewWorkspace({ data, year }: { data: AppData; year: string }) {
             const isSelected = selected.has(reviewSourceId(source))
             return <li key={reviewSourceId(source)}>
               <div>
-                <Link className="project-contact" to={resolved.href}>{resolved.title}</Link>
+                <Link className="workspace-record-link" to={resolved.href}>{resolved.title}</Link>
                 <p className="hint"><time dateTime={resolved.date}>{resolved.date}</time>{gap && ` · 相隔 ${gap} 天`}</p>
               </div>
               <button type="button" className="btn btn-secondary btn-sm" disabled={isSelected} onClick={() => add(source)}>
@@ -88,7 +88,7 @@ function ReviewWorkspace({ data, year }: { data: AppData; year: string }) {
           })}
         </ul> : <p className="hint">这个年份暂无此类记录。</p>}
       </section>
-      <section className="card project-section review-selection" aria-labelledby="review-selection">
+      <section className="card review-panel review-selection" aria-labelledby="review-selection">
         <header><h2 id="review-selection" className="section-title">回顾选编</h2></header>
         <div className="field">
           <label className="field-label" htmlFor="review-title">回顾标题</label>
@@ -101,7 +101,7 @@ function ReviewWorkspace({ data, year }: { data: AppData; year: string }) {
           return <li key={selection.id}>
             <div className="review-choice-heading">
               <div>
-                {source ? <Link className="project-contact" to={source.href}>{source.title}</Link> : <strong>来源已移除</strong>}
+                {source ? <Link className="workspace-record-link" to={source.href}>{source.title}</Link> : <strong>来源已移除</strong>}
                 {source && <p className="hint"><time dateTime={source.date}>{source.date}</time></p>}
               </div>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelections((items) => items.filter((item) => item.id !== selection.id))}>移出</button>

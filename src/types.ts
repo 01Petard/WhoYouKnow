@@ -76,8 +76,6 @@ export interface PeopleProject {
   updatedAt: string
 }
 
-export type PeopleProjectInput = Omit<PeopleProject, 'id' | 'updatedAt'>
-
 export interface City {
   name: string
   region: string
@@ -102,8 +100,6 @@ export interface CityTrip {
   visits: CityVisit[]
   updatedAt: string
 }
-
-export type CityTripInput = Omit<CityTrip, 'id' | 'updatedAt'>
 
 export type ExchangeKind = 'help' | 'gift'
 export type ExchangeDirection = 'received' | 'given'
@@ -151,6 +147,7 @@ export interface Person {
   birthday?: string
   channel: string
   metAt: string
+  /** 历史快照字段，供原样备份。 */
   currentCity?: City
   pastCities?: City[]
   /** 手动标记的日期。展示时与手记日期比较。 */
@@ -190,6 +187,7 @@ export interface AppData {
   circles: Circle[]
   experiences?: Experience[]
   introductions?: Introduction[]
+  /** 历史工作台字段，保留备份兼容。 */
   projects?: PeopleProject[]
   trips?: CityTrip[]
   exchanges?: Exchange[]

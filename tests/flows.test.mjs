@@ -408,119 +408,6 @@ test('引荐离线修改缘由与远端更新进展合并，恢复时保留独�
   ])
 })
 
-test('项目各自保存成员角色，成员删除后保留待办和到期日，归档状态可重新打开', async () => {
-  const initial = { ...empty, people: [person('甲')] }
-  const f = fixture(initial)
-  const { useStore } = await import('../src/store/useStore.ts?projects')
-  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
-  const { overdueTask } = await import('../src/util/projects.ts')
-  const store = () => useStore.getState()
-  await store().hydrate()
-  const member = { id: '甲', role: '组织者', progress: '联系场地', updatedAt: '2025-05-04' }
-  const task = { id: 'task', title: '确认场地', due: '2025-05-06', done: true, memberId: '甲', updatedAt: '2025-05-05' }
-  const draft = { name: '聚会', description: '十周年', archived: false, members: [member], tasks: [task] }
-  const first = store().saveProject(draft)
-  const second = store().saveProject({ ...draft, name: '产品', members: [{ ...member, role: '设计师' }] })
-  assert.ok(first && second && first !== second)
-  assert.equal(store().saveProject({ ...draft, members: [member, member] }), null)
-  assert.equal(store().saveProject({ ...draft, members: [{ ...member, role: '召集人' }], archived: true }, first), first)
-  const projects = () => store().data.projects
-  assert.equal(projects()[1].members[0].role, '设计师')
-  assert.equal(projects()[0].archived, true)
-  assert.equal(store().saveProject({ ...projects()[0], archived: false }, first), first)
-  assert.deepEqual(projects()[0].tasks, [task])
-  assert.equal(store().saveProject({ ...projects()[0], members: [] }, first), first)
-  assert.deepEqual(projects()[0].tasks, [task])
-  assert.equal(store().deletePerson('甲'), true)
-  assert.deepEqual(projects()[1].members, [])
-  assert.equal((await store().storageSettled()).ok, true)
-  const backup = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
-  assert.equal(backup.ok, true)
-  assert.deepEqual(backup.data.projects.map((project) => project.tasks), [[task], [task]])
-  assert.equal(overdueTask('2025-05-06', '2025-05-06'), false)
-  assert.equal(overdueTask('2025-05-06', '2025-05-07'), true)
-})
-
-test('同一项目的独立成员与待办修改可在离线重试时合并', async () => {
-  const member = { id: '甲', role: '', progress: '', updatedAt: '' }
-  const task = { id: 'task', title: '确认场地', due: '', done: false, updatedAt: '' }
-  const project = { id: 'work', name: '聚会', description: '', archived: false, members: [member], tasks: [task], updatedAt: '' }
-  const initial = { ...empty, people: [person('甲')], projects: [project] }
-  const f = fixture(initial)
-  const tab = await storage('project-offline')
-  const base = (await tab.bootstrap({ data: empty })).snapshot.data
-  f.offline(true)
-  assert.equal((await tab.persist({ data: { ...initial, projects: [{
-    ...project, tasks: [{ ...task, due: '2025-05-06', updatedAt: '2025-05-05' }], updatedAt: '2025-05-05',
-  }] } }, base)).kind, 'local')
-  f.replaceFile({ ...initial, projects: [{
-    ...project, members: [{ ...member, role: '设计师', updatedAt: '2025-05-06' }],
-    tasks: [{ ...task, done: true, updatedAt: '2025-05-06' }], updatedAt: '2025-05-06',
-  }] })
-  f.offline(false)
-  assert.equal((await (await storage('project-reopened')).bootstrap({ data: empty })).kind, 'file')
-  assert.equal(f.file.projects[0].members[0].role, '设计师')
-  assert.equal(f.file.projects[0].tasks[0].done, true)
-  assert.equal(f.file.projects[0].tasks[0].due, '2025-05-06')
-})
-
-test('同名城市按地区区分，联系人搬家保留约见，删除只解除行程候选', async () => {
-  const initial = { ...empty, people: ['甲', '乙', '丙'].map((id) => person(id)) }
-  const f = fixture(initial)
-  const { useStore } = await import('../src/store/useStore.ts?cities')
-  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
-  const { cityPeople } = await import('../src/util/cities.ts')
-  const store = () => useStore.getState()
-  const city = { name: '苏州', region: '江苏' }
-  const another = { name: '苏州', region: '别处' }
-  await store().hydrate()
-  assert.equal(store().setContactCities('甲', city, []), true)
-  assert.equal(store().setContactCities('乙', city, []), true)
-  assert.equal(store().setContactCities('丙', another, [city, city]), true)
-  const directory = () => cityPeople(store().data.people, city)
-  assert.deepEqual(directory().current.map((item) => item.id), ['甲', '乙'])
-  assert.deepEqual(directory().past.map((item) => item.id), ['丙'])
-  const draft = { city, start: '2025-05-01', end: '2025-05-04', visits: [] }
-  assert.equal(store().saveTrip({ ...draft, end: '2025-04-30' }), null)
-  const id = store().saveTrip(draft)
-  const visit = { id: '甲', status: 'scheduled', date: '2025-05-02', note: '吃饭', updatedAt: '' }
-  assert.equal(store().saveTrip({ ...draft, visits: [visit, visit] }, id), null)
-  assert.equal(store().saveTrip({ ...draft, visits: [visit] }, id), id)
-  assert.equal(store().setContactCities('甲', another, []), true)
-  assert.deepEqual(directory().current.map((item) => item.id), ['乙'])
-  assert.equal(store().updatePerson('甲', { name: '甲的新名字' }), true)
-  assert.equal(store().data.people[0].currentCity.region, '别处')
-  assert.equal((await store().storageSettled()).ok, true)
-  const restored = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
-  assert.equal(restored.ok, true)
-  assert.deepEqual(restored.data.trips[0].visits, [visit])
-  assert.equal(store().deletePerson('甲'), true)
-  assert.equal(store().data.trips.length, 1)
-  assert.deepEqual(store().data.trips[0].visits, [])
-  await store().storageSettled()
-})
-
-test('离线约见与远端约见分别合并，相同约见也能合并状态与备注', async () => {
-  const visit = { id: '甲', status: 'interested', date: '', note: '', updatedAt: '' }
-  const trip = { id: 'trip', city: { name: '苏州', region: '江苏' }, start: '2025-05-01', end: '2025-05-04', visits: [visit], updatedAt: '' }
-  const initial = { ...empty, people: [person('甲'), person('乙')], trips: [trip] }
-  const f = fixture(initial)
-  const tab = await storage('trip-offline')
-  const base = (await tab.bootstrap({ data: empty })).snapshot.data
-  f.offline(true)
-  assert.equal((await tab.persist({ data: { ...initial, trips: [{
-    ...trip, visits: [{ ...visit, note: '午饭', updatedAt: '2025-05-01' }], updatedAt: '2025-05-01',
-  }] } }, base)).kind, 'local')
-  f.replaceFile({ ...initial, trips: [{
-    ...trip, visits: [{ ...visit, status: 'scheduled', updatedAt: '2025-05-02' }, { ...visit, id: '乙' }], updatedAt: '2025-05-02',
-  }] })
-  f.offline(false)
-  assert.equal((await (await storage('trip-reopened')).bootstrap({ data: empty })).kind, 'file')
-  assert.deepEqual(f.file.trips[0].visits.map(({ id, status, note }) => [id, status, note]), [
-    ['甲', 'scheduled', '午饭'], ['乙', 'interested', ''],
-  ])
-})
-
 test('礼尚往来的完成操作沿用编号，取消可重开，联系人删除仍保留历史和备份', async () => {
   const initial = { ...empty, people: [person('甲')] }
   const f = fixture(initial)
@@ -625,4 +512,30 @@ test('两个标签页首次保存同一年回顾时合并各自选编', async ()
   const merged = mergeData(empty, { ...empty, reviews: [review('local', '2025-04-01')] },
     { ...empty, reviews: [review('remote', '2025-05-01')] })
   assert.deepEqual(merged.reviews[0].selections.map((item) => item.source.entryId), ['local', 'remote'])
+})
+
+test('旧项目、城市与行程在联系人编辑、并发合并和 JSON 备份后仍保留', async () => {
+  const city = { name: '苏州', region: '江苏' }
+  const member = { id: '甲', role: '组织者', progress: '', updatedAt: '' }
+  const project = { id: 'project', name: '聚会', description: '', archived: false, members: [member], tasks: [], updatedAt: '' }
+  const visit = { id: '甲', status: 'scheduled', date: '', note: '', updatedAt: '' }
+  const trip = { id: 'trip', city, start: '2025-05-01', end: '2025-05-04', visits: [visit], updatedAt: '' }
+  const original = { ...empty, people: [person('甲', { currentCity: city })], projects: [project], trips: [trip] }
+  const f = fixture(original)
+  const { useStore } = await import('../src/store/useStore.ts?legacy-workspace')
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  const { mergeData } = await import('../src/util/merge.ts')
+  const store = () => useStore.getState()
+  await store().hydrate()
+  assert.equal(store().updatePerson('甲', { name: '新名字' }), true)
+  assert.equal((await store().storageSettled()).ok, true)
+  const persisted = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
+  assert.equal(persisted.ok, true)
+  assert.deepEqual(persisted.data.people[0].currentCity, city)
+  assert.deepEqual(persisted.data.projects, [project])
+  assert.deepEqual(persisted.data.trips, [trip])
+  const merged = mergeData(original, persisted.data, { ...original, tags: ['新标签'] })
+  assert.deepEqual(merged.projects, [project])
+  assert.deepEqual(merged.trips, [trip])
+  assert.deepEqual(merged.tags, ['新标签'])
 })

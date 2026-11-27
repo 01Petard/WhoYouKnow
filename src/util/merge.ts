@@ -2,12 +2,10 @@
  * [INPUT]: 读取联系人、联系手记、分类与工作台的业务快照。
  * [OUTPUT]: 导出 mergeData，用于多标签页写入冲突时的三方合并
  * [POS]: 存储层的纯函数边界；base=本页最后同步的版本，local=本页当前数据，remote=数据文件中的最新数据。
- *        记录按编号合并。项目成员、待办和约见独立合并。过滤失效的联系人引用。
+ *        记录及选编按编号合并。旧工作台字段随快照保留。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, Circle, ContactEntry, Person, ReviewSelection } from '../types'
-import { filterProjectMembers } from './projects'
-import { filterTripVisits } from './cities'
 
 function same(a: unknown, b: unknown): boolean {
   if (a === b) return true
@@ -146,10 +144,10 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
     ? mergeRecords(base.introductions ?? [], local.introductions ?? [], remote.introductions ?? [])
     : undefined
   const projects = local.projects || remote.projects || base.projects
-    ? mergeRecords(base.projects ?? [], local.projects ?? [], remote.projects ?? []).map((item) => filterProjectMembers(item, peopleIds))
+    ? mergeRecords(base.projects ?? [], local.projects ?? [], remote.projects ?? [])
     : undefined
   const trips = local.trips || remote.trips || base.trips
-    ? mergeRecords(base.trips ?? [], local.trips ?? [], remote.trips ?? []).map((trip) => filterTripVisits(trip, peopleIds))
+    ? mergeRecords(base.trips ?? [], local.trips ?? [], remote.trips ?? [])
     : undefined
   const exchanges = local.exchanges || remote.exchanges || base.exchanges
     ? mergeRecords(base.exchanges ?? [], local.exchanges ?? [], remote.exchanges ?? [])

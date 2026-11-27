@@ -20,3 +20,12 @@
   .review-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .review-workspace { grid-template-columns: minmax(0, 1fr); }
 }
+
+.review-panel > header { margin-bottom: var(--sp-3); }
+.review-panel ul { margin: 0; padding: 0; list-style: none; }
+.review-panel li { border-top: 1px solid var(--border-subtle); padding: var(--sp-3) 0; }
+.review-panel li:last-child { padding-bottom: 0; }
+.review-panel ul li { display: flex; justify-content: space-between; align-items: start; gap: var(--sp-3); }
+@media (max-width: 540px) {
+  .review-panel ul li { flex-wrap: wrap; }
+}

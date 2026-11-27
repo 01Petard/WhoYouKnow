@@ -131,6 +131,15 @@ whoyouknow.example.com {
 | 整理 | 「整理分类」按标签、分组及圈子切换列表，支持按钮排序与拖拽排序 |
 | 数据 | 人物 CSV、JSON 完整备份；CSV 导入同名增量更新 |
 
+### 工作台
+
+桌面端可从侧栏直达各项功能。移动端从底栏「工作台」进入。
+
+- **共同经历**：记录事件和参与人，从事件与联系人档案双向查看。
+- **引荐**：记录三方与进展，按姓名、标签或缘由查询实际引荐路径。
+- **礼尚往来**：记录帮助和礼物，处理待办并按类别、方向筛选。
+- **关系回顾**：汇总年度手记与经历，可保存选编并预览、下载 Markdown。
+
 ### 人脉页
 
 - 按姓名拼音首字母 A-Z 分组，数字、字母、特殊字符归入末尾 `#` 组。
@@ -161,7 +170,7 @@ whoyouknow.example.com {
 
 ### 数据
 
-- 结构：`{ version, people, tags, groups, circles, me }`；`people` 只存联系人，`me` 单独存当前用户。
+- 数据快照包含联系人、当前用户、分类和已录入的工作台记录。旧备份可直接恢复，工作台记录随 JSON 完整备份保存。
 - 数据文件：默认 `data/linkmap.json`；`pnpm dev` / `pnpm preview` 提供 Vite 文件 API，`pnpm serve` 托管静态 `dist` 并提供同一 API。
 - 自定义路径：设置环境变量 `LINKMAP_DATA_FILE=/absolute/path/data.json` 后启动任一服务，读写位置与设置页显示的路径都会跟随该文件。
 - 回退：文件 API 暂不可用时，待同步草稿保存在浏览器。重新打开页面、网络恢复或点击「立即保存」时会尝试同步。只托管静态页面时继续使用浏览器存储。
@@ -173,11 +182,13 @@ whoyouknow.example.com {
 
 `/people`（默认）、`/journal`、`/person/new`、`/person/:id`、`/person/:id/edit`、`/network`、`/profile`、`/profile/edit`、`/categories`、`/categories/groups?name=…`、`/categories/circles/:id`、`/settings`。
 
-响应式：`<1024px` 底部五项 Tab Bar；`≥1024px` 左侧竖向导航。宽屏内容区最大 1460px。
+工作台入口为 `/workspaces`。功能入口为 `/experiences`、`/introductions`、`/exchanges` 和 `/reviews`。
+
+小于 1024px 使用底部导航，宽屏使用左侧导航。内容区最大 1460px。
 
 ## 长期产品计划
 
-[长期产品路线图](docs/product/README.md) 收录七项功能的实施顺序与验收条件。
+[长期产品路线图](docs/product/README.md) 收录四项功能的验收记录和后续候选。
 
 ## 已知限制
 

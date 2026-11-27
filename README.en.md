@@ -117,6 +117,15 @@ Notes:
 | Organization | One “Categories” page with tags, groups and circles in three views; button ordering and drag-and-drop |
 | Data | People CSV, full JSON backup; same-name incremental import |
 
+### Workspace
+
+On desktop, open each feature from the sidebar. On mobile, open the Workspace tab.
+
+- **Shared experiences** records events and links them to each participant's profile.
+- **Introductions** records the requester, introducer, target, and progress, with a link to each recorded path.
+- **Exchanges** tracks gifts, help, and related to-dos.
+- **Relationship review** brings together a year's journal entries and experiences for Markdown export.
+
 ### People page
 
 - Grouped by the first pinyin letter (A-Z); digits, Latin letters and special characters go to a trailing `#` group.
@@ -146,7 +155,7 @@ Notes:
 
 ### Data
 
-- Shape: `{ version, people, tags, groups, circles, me }`; `people` holds contacts only, `me` holds the current user.
+- The snapshot includes contacts, the current profile, categories, and workspace records. Full JSON backups include workspace records and can also restore older snapshots.
 - Data file: defaults to `data/linkmap.json`. `pnpm dev` / `pnpm preview` serve the Vite file API; `pnpm serve` serves static `dist` with the same API.
 - Custom path: start any of those with `LINKMAP_DATA_FILE=/absolute/path/data.json`; both the read/write location and the path shown in Settings follow it.
 - Fallback: if the file API is unavailable (for example a static host without the server), the app keeps pending drafts in browser storage and shows the active mode in Settings.
@@ -159,11 +168,13 @@ Notes:
 
 `/people` (default), `/journal`, `/person/new`, `/person/:id`, `/person/:id/edit`, `/network`, `/profile`, `/profile/edit`, `/categories`, `/categories/groups?name=…`, `/categories/circles/:id`, `/settings`.
 
-Responsive: five-item bottom tab bar below 1024px; sidebar navigation at 1024px and above. Content max-width is 1460px with responsive side padding.
+The workspace is at `/workspaces`. Its features open at `/experiences`, `/introductions`, `/exchanges`, and `/reviews`.
+
+The bottom tab bar is shown below 1024px, and the sidebar appears on wider screens. Content max-width is 1460px.
 
 ## Product roadmap
 
-The [long-term roadmap](docs/product/README.md) lists seven planned features, their dependencies, and acceptance criteria.
+The [long-term roadmap](docs/product/README.md) records acceptance for the four features and lists follow-up ideas.
 
 ## Known limitations
 

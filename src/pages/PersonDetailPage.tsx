@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 读取联系人、分类、手记和工作台记录。复用 DateField 选择联系日期。
  * [OUTPUT]: 导出 PersonDetailPage。
- * [POS]: 并列展示联系活动与资料，编辑居住城市并回链工作台记录。
+ * [POS]: 并列展示联系活动与资料，回链共同经历、引荐和往来。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -9,7 +9,6 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { DateField } from '../components/DateField'
 import { ContactHistory } from '../components/ContactHistory'
-import { ContactCities } from '../components/ContactCities'
 import { ConfirmDialog } from '../components/Modal'
 import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
@@ -79,12 +78,6 @@ export function PersonDetailPage() {
     })
     return role ? [{ item, role }] : []
   }).sort((a, b) => b.item.date.localeCompare(a.item.date))
-  const projects = (data.projects ?? []).flatMap((project) => {
-    const member = project.members.find((item) => item.id === id)
-    return member ? [{ project, member }] : []
-  }).sort((a, b) => Number(a.project.archived) - Number(b.project.archived)
-    || b.project.updatedAt.localeCompare(a.project.updatedAt))
-  const visitCount = (data.trips ?? []).filter((trip) => trip.visits.some((visit) => visit.id === id)).length
   const exchanges = (data.exchanges ?? []).filter((item) => item.personId === id)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   const deleteMessage = person.contactHistory?.length
@@ -174,21 +167,11 @@ export function PersonDetailPage() {
               </li>)}
             </ul>
           </section>}
-          {projects.length > 0 && <section className="experience-backlinks" aria-labelledby="person-projects">
-            <h2 className="section-title" id="person-projects">人脉项目</h2>
-            <ul className="experience-people">
-              {projects.map(({ project, member }) => <li key={project.id}>
-                <Link className="project-contact" to={`/projects/${encodeURIComponent(project.id)}`}>{project.name}</Link>
-                {member.role && <span className="hint"> · {member.role}</span>}
-                {project.archived && <span className="hint"> · 已归档</span>}
-              </li>)}
-            </ul>
-          </section>}
           {exchanges.length > 0 && <section className="experience-backlinks" aria-labelledby="person-exchanges">
             <h2 className="section-title" id="person-exchanges">礼尚往来</h2>
             <ul className="experience-people">
               {exchanges.map((item) => <li key={item.id}>
-                <Link className="project-contact" to={`/exchanges/${encodeURIComponent(item.id)}?person=${encodeURIComponent(id)}`}>{item.content}</Link>
+                <Link className="workspace-record-link" to={`/exchanges/${encodeURIComponent(item.id)}?person=${encodeURIComponent(id)}`}>{item.content}</Link>
                 <span className="hint"> · {exchangeStatusLabels[item.phase.status]} · {exchangeDirectionLabels[item.direction]}{exchangeKindLabels[item.kind]}</span>
               </li>)}
             </ul>
@@ -206,7 +189,6 @@ export function PersonDetailPage() {
               <div><dt>性别</dt><dd>{person.gender || '未填写'}</dd></div>
             </dl>
           </section>
-          <ContactCities person={person} key={id} />
           <section className="contact-profile-info-section" aria-labelledby="person-note-heading">
             <h2 id="person-note-heading" className="section-title">备注</h2>
             {person.note ? <p className="contact-profile-note">{person.note}</p> : <p className="hint">暂无备注</p>}
@@ -261,8 +243,6 @@ export function PersonDetailPage() {
         message={deleteMessage
           + (experiences.length ? ` 将从 ${experiences.length} 条共同经历移除此参与人，经历仍会保留。` : '')
           + (introductions.length ? ` ${introductions.length} 条引荐将保留，并标记该档案已移除。` : '')
-          + (projects.length ? ` 将退出 ${projects.length} 个项目，关联待办仍会保留。` : '')
-          + (visitCount ? ` 将从 ${visitCount} 次行程移除此人的约见。` : '')
           + (exchanges.length ? ` ${exchanges.length} 条往来将保留，并标记该档案已移除。` : '')}
         confirmLabel="删除"
         destructive

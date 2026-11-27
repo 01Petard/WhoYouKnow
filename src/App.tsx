@@ -11,8 +11,6 @@ import { Layout, WorkspaceMenu } from './components/Layout'
 import { ContactJournalPage } from './pages/ContactJournalPage'
 import { ExperiencesPage } from './pages/ExperiencesPage'
 import { IntroductionsPage } from './pages/IntroductionsPage'
-import { ProjectsPage } from './pages/ProjectsPage'
-import { CitiesPage } from './pages/CitiesPage'
 import { ExchangesPage } from './pages/ExchangesPage'
 import { ReviewsPage } from './pages/ReviewsPage'
 import { PeoplePage } from './pages/PeoplePage'
@@ -75,10 +73,6 @@ export default function App() {
         <Route path="/experiences/:id" element={<ExperiencesPage key="detail" />} />
         <Route path="/introductions" element={<IntroductionsPage key="list" />} />
         <Route path="/introductions/:id" element={<IntroductionsPage key="detail" />} />
-        <Route path="/projects" element={<ProjectsPage key="list" />} />
-        <Route path="/projects/:id" element={<ProjectsPage key="detail" />} />
-        <Route path="/cities" element={<CitiesPage key="directory" />} />
-        <Route path="/cities/trips/:id" element={<CitiesPage key="trip" />} />
         <Route path="/exchanges" element={<ExchangesPage key="list" />} />
         <Route path="/exchanges/:id" element={<ExchangesPage key="detail" />} />
         <Route path="/reviews" element={<ReviewsPage />} />
