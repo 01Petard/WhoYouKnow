@@ -12,7 +12,7 @@
 - `Logo.tsx` 加载导航与欢迎页共用的品牌图标。
 - `Modal.tsx` 提供对话框、焦点管理与操作确认。
 - `NetworkGraph.tsx` 渲染关系网和图例。按分组时标注全部有成员的分组。
-- `PersonCard.tsx` 提供联系人目录行与共用头像。
+- `PersonCard.tsx` 提供共用头像及目录行。目录行展示分组、圈子和标签。
 - `QuickSelect.tsx` 提供可搜索的快速选择。
 - `RelationshipBadge.tsx` 展示联系人重要标记。
 - `Toast.tsx` 提供短时反馈，保存成功提示等待文件写入。

@@ -6,8 +6,9 @@
 - `tokens.css` 定义颜色、字体、间距和交互反馈 Token。
 - `base.css` 提供按钮、字段、空态、弹窗和提示样式。
 - `shell.css` 定义桌面侧栏和移动端导航。
-- `directory.css` 定义联系人目录、筛选和概览。
+- `directory.css` 定义联系人目录、筛选和概览。窄屏将分类排在姓名下方。
 - `network.css` 定义普通和全屏关系网的画布、控件、图例和联系人资料位置。
+- `contact-profile.css` 定义联系人详情的身份区、联系活动与资料布局。
 - `person-pages.css` 定义档案、录入表单和欢迎页。
 - `journal.css` 定义手记时间线、回顾卡和档案列表。
 - `organize.css` 定义分类、成员和数据设置页。

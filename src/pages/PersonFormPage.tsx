@@ -1,12 +1,13 @@
 /**
- * [INPUT]: 依赖 ../components/Toast 的 useToast；依赖 ../store/useStore 的 data/addPerson/updatePerson/updateMe；依赖 ../types 的 Gender/PersonInput；依赖 react-router-dom 的 useLocation/useNavigate/useParams
+ * [INPUT]: 依赖 ../components/Modal 的 Modal；依赖 ../components/Toast 的 useToast；依赖 ../store/useStore 的 data/addPerson/updatePerson/updateMe；依赖 ../types 的 Gender/PersonInput；依赖 react-router-dom 的 useLocation/useNavigate/useParams
  * [OUTPUT]: 导出 PersonFormPage 组件
- * [POS]: 新建与编辑共用的表单页；/profile/edit 编辑当前用户资料，其余按路径结尾 /edit 判定人物编辑；基本资料与分类独立分区，可就地新增标签与分组草稿。
+ * [POS]: 新建与编辑共用的表单页；/profile/edit 编辑当前用户资料，其余按路径结尾 /edit 判定人物编辑；基本资料直接显示可选字段，分类独立分区，可就地新增标签与分组草稿。新建同名联系人须先确认。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { Modal } from '../components/Modal'
 import { useToast } from '../components/Toast'
 import { useStore } from '../store/useStore'
 import type { Gender, PersonInput } from '../types'
@@ -50,8 +51,8 @@ export function PersonFormPage() {
         }
       : emptyForm,
   )
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false)
   const [error, setError] = useState('')
-  const [expanded, setExpanded] = useState(Boolean(existing?.birthday || existing?.channel || existing?.metAt || existing?.gender || existing?.note))
   const [newTag, setNewTag] = useState('')
   const [newGroup, setNewGroup] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
@@ -68,12 +69,14 @@ export function PersonFormPage() {
     if (!isEdit && window.matchMedia('(min-width: 1024px)').matches) nameRef.current?.focus()
   }, [isEdit])
 
-  const duplicateCount = useMemo(() => {
-    if (isMe) return 0
+  const duplicates = useMemo(() => {
+    if (isMe) return []
     const name = form.name.trim()
-    if (!name) return 0
-    return data.people.filter((p) => p.name.trim() === name && p.id !== id).length
+    if (!name) return []
+    return data.people.filter((p) => p.name.trim() === name && p.id !== id)
   }, [data.people, form.name, id, isMe])
+
+  const duplicateCount = duplicates.length
 
   const setField = <K extends keyof PersonInput>(key: K, value: PersonInput[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -122,6 +125,15 @@ export function PersonFormPage() {
       navigate(`/person/${id}`, { replace: true })
       return
     }
+    if (duplicateCount > 0) {
+      setConfirmDuplicate(true)
+      return
+    }
+    saveNewPerson()
+  }
+
+  const saveNewPerson = () => {
+    setConfirmDuplicate(false)
     const ok = addPerson(form)
     if (!ok) {
       toast.show('保存失败，数据未写入，请重试')
@@ -161,11 +173,11 @@ export function PersonFormPage() {
                 onChange={(event) => setField('name', event.target.value)}
                 placeholder="输入姓名或你记住的备注名"
                 aria-invalid={Boolean(error)}
-                aria-describedby={error ? 'name-error' : duplicateCount ? 'name-duplicate' : undefined}
+                aria-describedby={error ? 'name-error' : isEdit && duplicateCount ? 'name-duplicate' : undefined}
                 autoComplete="off"
               />
               {error && <p className="field-error" id="name-error" role="alert">{error}</p>}
-              {!error && duplicateCount > 0 && (
+              {!error && isEdit && duplicateCount > 0 && (
                 <p className="field-hint" id="name-duplicate">
                   已有 {duplicateCount} 位同名的人 ·{' '}
                   <button type="button" className="link-inline" onClick={() => navigate('/people')}>查看</button>
@@ -173,18 +185,7 @@ export function PersonFormPage() {
               )}
             </div>
 
-            <button
-              type="button"
-              className="collapsible-head person-form-disclosure"
-              aria-expanded={expanded}
-              aria-controls="person-more-fields"
-              onClick={() => setExpanded(!expanded)}
-            >
-              更多信息（可选）
-              <ChevronDown size={18} aria-hidden="true" />
-            </button>
-
-            <div id="person-more-fields" className="person-form-more" hidden={!expanded}>
+            <div className="person-form-more">
               <div className="field">
                 <label className="field-label" htmlFor="person-gender">性别</label>
                 <select
@@ -268,6 +269,41 @@ export function PersonFormPage() {
           <button type="submit" className="btn btn-primary">保存</button>
         </div>
       </form>
+
+      <Modal
+        open={confirmDuplicate}
+        title="发现同名联系人"
+        onClose={() => setConfirmDuplicate(false)}
+        showClose={false}
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setConfirmDuplicate(false)}>返回编辑</button>
+            <button type="button" className="btn btn-primary" onClick={saveNewPerson}>仍然添加</button>
+          </>
+        }
+      >
+        <p>已有 {duplicateCount} 位同名联系人。是否继续添加？</p>
+        {duplicates.map((person) => {
+          const details = [
+            ['性别', person.gender],
+            ['生日', person.birthday],
+            ['认识渠道', person.channel],
+            ['认识时间', person.metAt],
+            ['分组', person.groups.join('、')],
+            ['标签', person.tags.join('、')],
+            ['备注', person.note],
+          ].filter(([, value]) => value)
+          return (
+            <div key={person.id}>
+              <h3 className="panel-section-title">{person.name}</h3>
+              {details.length === 0 && <p>暂无其他资料</p>}
+              {details.map(([label, value]) => (
+                <p key={label} style={{ overflowWrap: 'anywhere' }}>{label}：{value}</p>
+              ))}
+            </div>
+          )
+        })}
+      </Modal>
     </div>
   )
 }

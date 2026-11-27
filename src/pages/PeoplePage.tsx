@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖联系人查询、拼音索引、筛选状态与目录组件。
  * [OUTPUT]: 导出 PeoplePage。
- * [POS]: 人脉首页提供搜索、分类筛选、分组及联系手记入口。
+ * [POS]: 人脉首页提供搜索、分类筛选及联系手记入口。目录展示分组、圈子和标签。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useState } from 'react'
@@ -14,7 +14,7 @@ import { useStore } from '../store/useStore'
 import type { FilterState } from '../types'
 import { FOLLOW_UP_DAYS, UNCLASSIFIED } from '../util/constants'
 import { groupContacts } from '../util/contactIndex'
-import { filterPeople } from '../util/queries'
+import { circlesOfPerson, filterPeople } from '../util/queries'
 
 const peopleViews = [
   { key: 'all', label: '全部' },
@@ -163,12 +163,12 @@ export function PeoplePage() {
           {groups.length > 0 ? (
             <>
               <div className="directory-columns" aria-hidden="true">
-                <span>姓名</span><span>分组</span><span>上次联系</span><span />
+                <span>姓名</span><span>分组</span><span>圈子</span><span>标签</span><span />
               </div>
               {groups.map(({ key, people: members }) => (
                 <section className="contact-group" key={key} aria-label={`首字母 ${key}`}>
                   <h2 className="contact-index">{key}</h2>
-                  {members.map((person) => <PersonCard key={person.id} person={person} />)}
+                  {members.map((person) => <PersonCard key={person.id} person={person} circles={circlesOfPerson(data, person)} />)}
                 </section>
               ))}
             </>

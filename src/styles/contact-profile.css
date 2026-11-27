@@ -1,0 +1,79 @@
+/*
+ * [INPUT]: 使用主题 Token、档案和手记组件类名。
+ * [OUTPUT]: 提供联系人详情的身份区、联系活动与资料样式。
+ * [POS]: 仅影响联系人详情。窄屏先展示联系活动。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+.content.contact-profile { max-width: 1170px; }
+.contact-profile-back { gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.contact-profile-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5) clamp(16px, 3vw, 30px);
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.contact-profile-header .avatar { width: 68px; height: 68px; font-size: 27px; }
+.contact-profile-name h1 { overflow-wrap: anywhere; line-height: 1.2; }
+.contact-profile-subtitle, .contact-profile-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.contact-profile-subtitle { margin-top: var(--sp-2); font-size: var(--fs-caption); color: var(--text-secondary); overflow-wrap: anywhere; }
+.contact-profile-marker { padding: 2px 8px; border-radius: var(--radius-xs); background: var(--marker-important-bg); color: var(--marker-important-ink); }
+.contact-profile-star[aria-pressed="true"] { background: var(--marker-important-bg); border-color: transparent; color: var(--marker-important-ink); }
+.contact-profile-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(250px, 1fr); align-items: start; gap: var(--sp-4); }
+.card.contact-profile-activity, .card.contact-profile-info { min-width: 0; margin-top: 0; padding: clamp(16px, 2.3vw, 26px); }
+.contact-profile-recent { padding-bottom: var(--sp-4); border-bottom: 1px solid var(--border-subtle); }
+.contact-profile-recent-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--color-action-wash);
+  border-radius: var(--radius-sm);
+}
+.contact-profile-clock {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--color-action-active);
+}
+.contact-profile-recent-date h2 { font-size: var(--fs-caption); color: var(--text-secondary); font-weight: 500; }
+.contact-profile-recent-date time, .contact-profile-recent-date strong { font-size: clamp(15px, 2vw, 19px); color: var(--text-heading); font-weight: var(--fw-semibold); }
+.contact-profile-date-editor { margin-top: var(--sp-2); }
+.contact-profile-date-editor summary { width: fit-content; cursor: pointer; padding-block: var(--sp-2); color: var(--color-action-active); font-size: var(--fs-label); }
+.contact-profile-date-editor form { margin-top: var(--sp-2); max-width: 330px; }
+.contact-profile-date-editor input { min-width: 0; }
+.contact-profile-activity > .contact-history.card { margin: 0; padding: var(--sp-4) 0 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.contact-profile-info-section { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--border-subtle); }
+.contact-profile-info-section > p { margin-top: var(--sp-2); overflow-wrap: anywhere; }
+.contact-profile-note { white-space: pre-wrap; }
+.contact-profile-fields { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0 0; }
+.contact-profile-fields > div { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; }
+.contact-profile-fields dt { color: var(--text-secondary); font-size: var(--fs-label); }
+.contact-profile-fields dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.contact-profile-classification .tag-chip { max-width: 100%; height: auto; min-height: 24px; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+.contact-profile .person-workspace-footer { flex-wrap: wrap; margin-top: var(--sp-4); }
+
+@media (max-width: 760px) {
+  .contact-profile-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .contact-profile-header { grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-3); }
+  .contact-profile-header .avatar { width: 53px; height: 53px; }
+  .contact-profile-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .contact-profile-recent-row { gap: var(--sp-2); padding: var(--sp-2); }
+  .contact-profile-clock { width: 32px; height: 32px; }
+  .contact-profile-clock svg { width: 18px; }
+}

@@ -1,14 +1,12 @@
 /**
- * [INPUT]: 依赖 React 元素标识、路由链接、联系人字段、最新联系日期与星标。
+ * [INPUT]: 依赖 路由链接、联系人字段、所属圈子与星标。
  * [OUTPUT]: 导出 Avatar 和 PersonCard。
- * [POS]: 各页面共用头像，目录行展示姓名、分组与上次联系日期。
+ * [POS]: 各页面共用头像，目录行展示姓名、分组、圈子和标签。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import { useId } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import type { Person } from '../types'
-import { latestContactDate } from '../util/contactJournal'
+import type { Circle, Person } from '../types'
 import { initials } from '../util/format'
 import { ImportantStar } from './RelationshipBadge'
 
@@ -23,15 +21,15 @@ export function Avatar({ person, small = false }: { person: Pick<Person, 'name' 
   )
 }
 
-export function PersonCard({ person }: { person: Person }) {
-  const contactDateId = useId()
-  const lastContact = latestContactDate(person)
-  const subtitle = person.channel || person.tags.slice(0, 2).join('、')
+export function PersonCard({ person, circles }: { person: Person; circles: Circle[] }) {
+  const circleNames = circles.map(({ name }) => name).join('、')
+  const tagNames = person.tags.join('、')
+  const subtitle = person.channel
   const group = person.groups[0]
   const groupCount = person.groups.length - 1
 
   return (
-    <Link className="person-card" to={`/person/${encodeURIComponent(person.id)}`} aria-label={`查看 ${person.name} 的详情`} aria-describedby={contactDateId}>
+    <Link className="person-card" to={`/person/${encodeURIComponent(person.id)}`}>
       <span className="directory-person">
         <Avatar person={person} />
         <span className="person-info">
@@ -39,10 +37,11 @@ export function PersonCard({ person }: { person: Person }) {
             <span className="person-name">{person.name}</span>
             {person.important && <ImportantStar active />}
           </span>
-          {(subtitle || group) && <span className="person-sub">{subtitle || group}</span>}
+          {subtitle && <span className="person-sub">{subtitle}</span>}
         </span>
       </span>
       <span className="person-groups">
+        <span className="sr-only">分组：</span>
         {group ? (
           <>
             <span className="person-group" title={person.groups.join('、')}>{group}</span>
@@ -50,9 +49,11 @@ export function PersonCard({ person }: { person: Person }) {
           </>
         ) : <span className="person-muted">未分组</span>}
       </span>
-      <span id={contactDateId} className={`person-contact-date tabular${lastContact ? '' : ' person-muted'}`}>
-        <span className="sr-only">上次联系：</span>
-        {lastContact ? <time dateTime={lastContact}>{lastContact}</time> : '未记录'}
+      <span className="person-classification" title={circleNames || undefined}>
+        <span className="sr-only">圈子：</span>{circleNames || '未加入圈子'}
+      </span>
+      <span className="person-classification" title={tagNames || undefined}>
+        <span className="sr-only">标签：</span>{tagNames || '无标签'}
       </span>
       <ChevronRight className="person-chevron" size={16} aria-hidden="true" />
     </Link>

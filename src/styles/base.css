@@ -195,7 +195,6 @@ button.tag-chip { cursor: pointer; font-family: inherit; }
 .field-hint { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--text-placeholder); margin-top: var(--sp-1); }
 .checkbox-row { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--tap-min-size); font-size: var(--fs-body); }
 .checkbox-row input { width: 18px; height: 18px; accent-color: var(--color-action); }
-.collapsible-head { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: var(--tap-min-size); border: 0; background: transparent; color: var(--color-action); font-size: var(--fs-label); font-weight: var(--fw-medium); padding: 0; }
 
 /* ---------- Modal / drawer ---------- */
 .backdrop {
