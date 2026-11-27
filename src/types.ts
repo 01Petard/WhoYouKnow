@@ -47,8 +47,6 @@ export interface Introduction {
   updatedAt: string
 }
 
-export type IntroductionInput = Omit<Introduction, 'id' | 'updatedAt'>
-
 export interface ProjectMember {
   /** 联系人编号，在单个项目内唯一。 */
   id: string
@@ -186,8 +184,8 @@ export interface AppData {
   groups: string[]
   circles: Circle[]
   experiences?: Experience[]
-  introductions?: Introduction[]
   /** 历史工作台字段，保留备份兼容。 */
+  introductions?: Introduction[]
   projects?: PeopleProject[]
   trips?: CityTrip[]
   exchanges?: Exchange[]

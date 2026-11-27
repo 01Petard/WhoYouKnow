@@ -122,7 +122,6 @@ Notes:
 On desktop, open each feature from the sidebar. On mobile, open the Workspace tab.
 
 - **Shared experiences** records events and links them to each participant's profile.
-- **Introductions** records the requester, introducer, target, and progress, with a link to each recorded path.
 - **Exchanges** tracks gifts, help, and related to-dos.
 - **Relationship review** brings together a year's journal entries and experiences for Markdown export.
 
@@ -168,13 +167,13 @@ On desktop, open each feature from the sidebar. On mobile, open the Workspace ta
 
 `/people` (default), `/journal`, `/person/new`, `/person/:id`, `/person/:id/edit`, `/network`, `/profile`, `/profile/edit`, `/categories`, `/categories/groups?name=…`, `/categories/circles/:id`, `/settings`.
 
-The workspace is at `/workspaces`. Its features open at `/experiences`, `/introductions`, `/exchanges`, and `/reviews`.
+The workspace is at `/workspaces`. Its features open at `/experiences`, `/exchanges`, and `/reviews`.
 
 The bottom tab bar is shown below 1024px, and the sidebar appears on wider screens. Content max-width is 1460px.
 
 ## Product roadmap
 
-The [long-term roadmap](docs/product/README.md) records acceptance for the four features and lists follow-up ideas.
+The [long-term roadmap](docs/product/README.md) records acceptance for the three features and lists follow-up ideas.
 
 ## Known limitations
 

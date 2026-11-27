@@ -1,12 +1,14 @@
 /**
- * [INPUT]: 读取旧版本快照里的项目、居住城市和行程。
+ * [INPUT]: 读取旧版本快照里的引荐、项目、居住城市和行程。
  * [OUTPUT]: 提供旧字段的结构校验和城市规范化。
  * [POS]: 保留现有快照和 JSON 备份中的历史字段。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { City, CityTrip, PeopleProject } from '../types'
+import type { City, CityTrip, Introduction, IntroductionParty, PeopleProject } from '../types'
 import { isDateOnly } from './id'
 
+const introductionRoles = ['requester', 'introducer', 'target'] as const
+const introductionStatuses = new Set(['pending', 'requested', 'completed', 'closed'])
 const visitStatuses = new Set(['interested', 'scheduled', 'met', 'cancelled'])
 
 function isRow(value: unknown): value is { id: string; updatedAt: string } {
@@ -76,4 +78,35 @@ export function readCityTrips(value: unknown): CityTrip[] | null {
     ids.add(trip.id)
   }
   return value
+}
+
+function isParty(value: unknown): value is IntroductionParty {
+  if (!value || typeof value !== 'object') return false
+  const item = value as Partial<{ kind: string; personId: string; name: string }>
+  return item.kind === 'self'
+    || (typeof item.name === 'string' && Boolean(item.name.trim())
+      && (item.kind === 'unlisted' || (item.kind === 'contact' && typeof item.personId === 'string' && Boolean(item.personId.trim()))))
+}
+
+function validIntroduction(input: Introduction): boolean {
+  if (!input.parties || introductionRoles.some((role) => !isParty(input.parties[role]))) return false
+  if (!isDateOnly(input.date)) return false
+  if (typeof input.reason !== 'string' || !input.reason.trim()) return false
+  if (!introductionStatuses.has(input.status)) return false
+  const { parties } = input
+  if (parties.requester.kind === 'unlisted' || parties.introducer.kind === 'unlisted') return false
+  const selected = introductionRoles.map((role) => parties[role])
+  if (!selected.some((party) => party.kind === 'self')) return false
+  const keys = selected.map((party) => party.kind === 'contact' ? `contact:${party.personId}` : party.kind)
+  return new Set(keys).size === keys.length
+}
+
+export function readIntroductions(raw: unknown): Introduction[] | null {
+  if (!Array.isArray(raw)) return null
+  const ids = new Set<string>()
+  for (const item of raw) {
+    if (!isRow(item) || ids.has(item.id) || !validIntroduction(item as Introduction)) return null
+    ids.add(item.id)
+  }
+  return raw
 }

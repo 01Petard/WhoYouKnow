@@ -136,7 +136,6 @@ whoyouknow.example.com {
 桌面端可从侧栏直达各项功能。移动端从底栏「工作台」进入。
 
 - **共同经历**：记录事件和参与人，从事件与联系人档案双向查看。
-- **引荐**：记录三方与进展，按姓名、标签或缘由查询实际引荐路径。
 - **礼尚往来**：记录帮助和礼物，处理待办并按类别、方向筛选。
 - **关系回顾**：汇总年度手记与经历，可保存选编并预览、下载 Markdown。
 
@@ -182,13 +181,13 @@ whoyouknow.example.com {
 
 `/people`（默认）、`/journal`、`/person/new`、`/person/:id`、`/person/:id/edit`、`/network`、`/profile`、`/profile/edit`、`/categories`、`/categories/groups?name=…`、`/categories/circles/:id`、`/settings`。
 
-工作台入口为 `/workspaces`。功能入口为 `/experiences`、`/introductions`、`/exchanges` 和 `/reviews`。
+工作台入口为 `/workspaces`。功能入口为 `/experiences`、`/exchanges` 和 `/reviews`。
 
 小于 1024px 使用底部导航，宽屏使用左侧导航。内容区最大 1460px。
 
 ## 长期产品计划
 
-[长期产品路线图](docs/product/README.md) 收录四项功能的验收记录和后续候选。
+[长期产品路线图](docs/product/README.md) 收录三项功能的验收记录和后续候选。
 
 ## 已知限制
 

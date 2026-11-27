@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 读取联系人、分类、手记和工作台记录。复用 DateField 选择联系日期。
  * [OUTPUT]: 导出 PersonDetailPage。
- * [POS]: 并列展示联系活动与资料，回链共同经历、引荐和往来。
+ * [POS]: 并列展示联系活动与资料，回链共同经历和往来。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -19,7 +19,6 @@ import { today } from '../util/id'
 import { COPY } from '../util/constants'
 import { circlesOfPerson } from '../util/queries'
 import { newestExperiences } from '../util/experiences'
-import { introductionRoles, introductionRoleLabels } from '../util/introductions'
 import { exchangeDirectionLabels, exchangeKindLabels, exchangeStatusLabels } from '../util/exchanges'
 
 export function PersonDetailPage() {
@@ -71,13 +70,6 @@ export function PersonDetailPage() {
 
   const lastContact = latestContactDate(person)
   const experiences = newestExperiences((data.experiences ?? []).filter((item) => item.participantIds.includes(id)))
-  const introductions = (data.introductions ?? []).flatMap((item) => {
-    const role = introductionRoles.find((key) => {
-      const party = item.parties[key]
-      return party.kind === 'contact' && party.personId === id
-    })
-    return role ? [{ item, role }] : []
-  }).sort((a, b) => b.item.date.localeCompare(a.item.date))
   const exchanges = (data.exchanges ?? []).filter((item) => item.personId === id)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   const deleteMessage = person.contactHistory?.length
@@ -157,16 +149,6 @@ export function PersonDetailPage() {
               </li>)}
             </ul>
           </section>}
-          {introductions.length > 0 && <section className="experience-backlinks" aria-labelledby="person-introductions">
-            <h2 className="section-title" id="person-introductions">引荐</h2>
-            <ul className="experience-people">
-              {introductions.map(({ item, role }) => <li key={item.id}>
-                <time dateTime={item.date}>{item.date}</time>
-                <Link className="text-link" to={`/introductions/${encodeURIComponent(item.id)}`}>{item.reason}</Link>
-                <span className="hint"> · {introductionRoleLabels[role]}</span>
-              </li>)}
-            </ul>
-          </section>}
           {exchanges.length > 0 && <section className="experience-backlinks" aria-labelledby="person-exchanges">
             <h2 className="section-title" id="person-exchanges">礼尚往来</h2>
             <ul className="experience-people">
@@ -242,7 +224,6 @@ export function PersonDetailPage() {
         title="删除人物"
         message={deleteMessage
           + (experiences.length ? ` 将从 ${experiences.length} 条共同经历移除此参与人，经历仍会保留。` : '')
-          + (introductions.length ? ` ${introductions.length} 条引荐将保留，并标记该档案已移除。` : '')
           + (exchanges.length ? ` ${exchanges.length} 条往来将保留，并标记该档案已移除。` : '')}
         confirmLabel="删除"
         destructive

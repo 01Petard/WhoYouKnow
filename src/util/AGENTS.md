@@ -11,8 +11,7 @@
 - `experiences.ts` 按发生日期倒序排列共同经历。
 - `format.ts` 格式化展示日期、相对时间与首字。
 - `id.ts` 创建标识符，校验和比较日历日期。
-- `introductions.ts` 校验三方角色和引荐状态，解析引荐角色的显示名称。
-- `legacyWorkspace.ts` 校验旧快照的项目、城市和行程字段，供备份往返。
+- `legacyWorkspace.ts` 校验旧快照的引荐、项目、城市和行程字段，供备份往返。
 - `merge.ts` 按提交基线合并业务记录，按来源编号合并同年选编。
 - `queries.ts` 派生圈子成员并执行姓名查询、事务目录及分类筛选。
 - `reviews.ts` 统计年度来源和重新联系，解析选编引用与 Markdown 内容。

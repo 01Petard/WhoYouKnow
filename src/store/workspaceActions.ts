@@ -4,16 +4,14 @@
  * [POS]: 工作台的写入边界。保存往来状态与发生日期时沿用原编号。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, ExchangeInput, ExperienceInput, IntroductionInput, RelationshipReview } from '../types'
+import type { AppData, ExchangeInput, ExperienceInput, RelationshipReview } from '../types'
 import { isDateOnly, today, uid } from '../util/id'
 import { validExchange } from '../util/exchanges'
 import { readReviews } from '../util/reviews'
-import { introductionIssue, introductionRoles } from '../util/introductions'
 
 export interface WorkspaceActions {
   saveExperience: (input: ExperienceInput, id?: string) => string | null
   deleteExperience: (id: string) => boolean
-  saveIntroduction: (input: IntroductionInput, id?: string) => string | null
   saveExchange: (input: ExchangeInput, id?: string) => string | null
   deleteExchange: (id: string) => boolean
   saveReview: (review: Omit<RelationshipReview, 'updatedAt'>) => boolean
@@ -42,26 +40,6 @@ export function workspaceActions(readData: () => AppData, commit: (patch: { data
       const data = readData()
       if (!data.experiences?.some((item) => item.id === id)) return false
       return commit({ data: { ...data, experiences: data.experiences.filter((item) => item.id !== id) } })
-    },
-
-    saveIntroduction(input, id) {
-      const data = readData()
-      const introductions = data.introductions ?? []
-      const previous = introductions.find((item) => item.id === id)
-      if ((id && !previous) || introductionIssue(input)) return null
-      const people = new Map(data.people.map((person) => [person.id, person]))
-      const parties = { ...input.parties }
-      for (const role of introductionRoles) {
-        const party = parties[role]
-        if (party.kind !== 'contact') continue
-        const person = people.get(party.personId)
-        const former = previous?.parties[role]
-        if (!person && (former?.kind !== 'contact' || former.personId !== party.personId)) return null
-        parties[role] = { ...party, name: person?.name ?? (former?.kind === 'contact' ? former.name : party.name) }
-      }
-      const entry = { ...input, parties, id: id ?? uid(), reason: input.reason.trim(), updatedAt: nowIso() }
-      const next = previous ? introductions.map((item) => item === previous ? entry : item) : [...introductions, entry]
-      return commit({ data: { ...data, introductions: next } }) ? entry.id : null
     },
 
     saveExchange(input, id) {

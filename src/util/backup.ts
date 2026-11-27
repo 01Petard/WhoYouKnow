@@ -8,8 +8,7 @@ import type { AppData, BackupFile, Circle, ContactEntry, Experience, Gender, Per
 import { DATA_VERSION } from './constants'
 import { isContactMethod } from './contactJournal'
 import { isDateOnly } from './id'
-import { readIntroductions } from './introductions'
-import { cityKey, isCity, normalizeCity, readCityTrips, readProjects, uniqueCities } from './legacyWorkspace'
+import { cityKey, isCity, normalizeCity, readCityTrips, readIntroductions, readProjects, uniqueCities } from './legacyWorkspace'
 import { readExchanges } from './exchanges'
 import { readReviews } from './reviews'
 
