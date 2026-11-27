@@ -6,7 +6,7 @@
 - [server](server/AGENTS.md) 提供项目文件 API。
 - [tests](tests/AGENTS.md) 验证联系人和数据流程。
 - [public](public/AGENTS.md) 存放品牌图标和界面图像。
-- `docs/design/` 保留早期设计规范。
+- [docs](docs/AGENTS.md) 保存早期设计规范和长期产品路线图。
 - `Dockerfile` 和 `.dockerignore` 定义构建、测试与 Alpine 运行镜像的内容。
 - `compose.yaml` 运行单容器服务，将部署仓库的 `data/` 挂载到 `/data`。
 - `deploy.sh` 拉取 Git 更新、构建镜像、备份数据并清理已替换的容器和镜像。

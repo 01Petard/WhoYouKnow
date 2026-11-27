@@ -161,6 +161,10 @@ Notes:
 
 Responsive: five-item bottom tab bar below 1024px; sidebar navigation at 1024px and above. Content max-width is 1460px with responsive side padding.
 
+## Product roadmap
+
+The [long-term roadmap](docs/product/README.md) lists seven planned features, their dependencies, and acceptance criteria.
+
 ## Known limitations
 
 - Pinyin grouping uses the browser’s Chinese collation plus initial-letter anchors; very rare polyphonic characters may group by their common reading.
