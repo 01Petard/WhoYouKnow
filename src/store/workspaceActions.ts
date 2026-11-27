@@ -1,12 +1,13 @@
 /**
  * [INPUT]: 读取当前 AppData，提交变更交由主状态仓库的保存队列。
  * [OUTPUT]: 提供 WorkspaceActions 与工作台写入实现。
- * [POS]: 工作台的写入边界，保证角色、成员和联系人引用有效。
+ * [POS]: 工作台的写入边界。保存往来状态与发生日期时沿用原编号。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, City, CityTripInput, ExperienceInput, IntroductionInput, PeopleProjectInput } from '../types'
+import type { AppData, City, CityTripInput, ExchangeInput, ExperienceInput, IntroductionInput, PeopleProjectInput } from '../types'
 import { cityKey, cityPeople, isCity, isTripInput, normalizeCity, uniqueCities } from '../util/cities'
-import { isDateOnly, uid } from '../util/id'
+import { isDateOnly, today, uid } from '../util/id'
+import { validExchange } from '../util/exchanges'
 import { introductionIssue, introductionRoles } from '../util/introductions'
 import { isProjectInput } from '../util/projects'
 
@@ -17,6 +18,8 @@ export interface WorkspaceActions {
   saveProject: (input: PeopleProjectInput, id?: string) => string | null
   setContactCities: (id: string, currentCity: City | undefined, pastCities: City[]) => boolean
   saveTrip: (input: CityTripInput, id?: string) => string | null
+  saveExchange: (input: ExchangeInput, id?: string) => string | null
+  deleteExchange: (id: string) => boolean
 }
 
 export function workspaceActions(readData: () => AppData, commit: (patch: { data: AppData }) => boolean): WorkspaceActions {
@@ -105,6 +108,26 @@ export function workspaceActions(readData: () => AppData, commit: (patch: { data
       const trip = { ...input, city: normalizeCity(input.city), id: id ?? uid(), updatedAt: nowIso() }
       const next = previous ? trips.map((item) => item === previous ? trip : item) : [...trips, trip]
       return commit({ data: { ...data, trips: next } }) ? trip.id : null
+    },
+
+    saveExchange(input, id) {
+      const data = readData()
+      const exchanges = data.exchanges ?? []
+      const previous = exchanges.find((item) => item.id === id)
+      if ((id && !previous) || !validExchange(input)) return null
+      if (input.phase.status === 'occurred' && input.phase.date > today()) return null
+      const person = data.people.find((item) => item.id === input.personId)
+      const personName = person?.name ?? (previous?.personId === input.personId ? previous.personName : undefined)
+      if (!personName) return null
+      const exchange = { ...input, personName, id: id ?? uid(), content: input.content.trim(), updatedAt: nowIso() }
+      const next = previous ? exchanges.map((item) => item === previous ? exchange : item) : [...exchanges, exchange]
+      return commit({ data: { ...data, exchanges: next } }) ? exchange.id : null
+    },
+
+    deleteExchange(id) {
+      const data = readData()
+      if (!data.exchanges?.some((item) => item.id === id && item.phase.status === 'occurred')) return false
+      return commit({ data: { ...data, exchanges: data.exchanges.filter((item) => item.id !== id) } })
     },
   }
 }

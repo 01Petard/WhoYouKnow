@@ -7,6 +7,7 @@
 - `CitiesPage.tsx` 分列常住和曾居住联系人，并维护行程的约见清单。
 - `ContactJournalPage.tsx` 按月展示手记和往年今日。
 - `DataPanel.tsx` 装配备份面板和联系人 CSV 流程。
+- `ExchangesPage.tsx` 分列往来待办、已发生与取消历史，待办原地转为实际记录。
 - `ExperiencesPage.tsx` 展示共同经历时间线和详情，编辑事件及参与人。
 - `GroupPage.tsx` 按分组浏览并调整成员。
 - `IntroductionsPage.tsx` 编辑引荐三方和进展，查询有记录可追溯的路径。

@@ -145,6 +145,9 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
   const trips = local.trips || remote.trips || base.trips
     ? mergeRecords(base.trips ?? [], local.trips ?? [], remote.trips ?? []).map((trip) => filterTripVisits(trip, peopleIds))
     : undefined
+  const exchanges = local.exchanges || remote.exchanges || base.exchanges
+    ? mergeRecords(base.exchanges ?? [], local.exchanges ?? [], remote.exchanges ?? [])
+    : undefined
   return {
     version: Math.max(base.version, local.version, remote.version),
     people,
@@ -155,6 +158,7 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
     ...(introductions ? { introductions } : {}),
     ...(projects ? { projects } : {}),
     ...(trips ? { trips } : {}),
+    ...(exchanges ? { exchanges } : {}),
     me,
   }
 }

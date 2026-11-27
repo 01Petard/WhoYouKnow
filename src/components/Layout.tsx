@@ -6,7 +6,7 @@
  */
 import { useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { BookUser, BriefcaseBusiness, CalendarDays, ChevronRight, Folders, Handshake, LayoutGrid, MapPin, Network, Settings, UserRound } from 'lucide-react'
+import { BookUser, BriefcaseBusiness, CalendarDays, ChevronRight, Folders, Gift, Handshake, LayoutGrid, MapPin, Network, Settings, UserRound } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Alert } from './Alert'
 import { Logo } from './Logo'
@@ -24,6 +24,7 @@ const WORKSPACES = [
   { to: '/introductions', label: '引荐', Icon: Handshake },
   { to: '/projects', label: '人脉项目', Icon: BriefcaseBusiness },
   { to: '/cities', label: '到一座城', Icon: MapPin },
+  { to: '/exchanges', label: '礼尚往来', Icon: Gift },
 ] as const
 
 const WORKSPACE_MENU = { to: '/workspaces', label: '工作台', Icon: LayoutGrid } as const

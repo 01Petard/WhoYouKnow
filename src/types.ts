@@ -105,6 +105,24 @@ export interface CityTrip {
 
 export type CityTripInput = Omit<CityTrip, 'id' | 'updatedAt'>
 
+export type ExchangeKind = 'help' | 'gift'
+export type ExchangeDirection = 'received' | 'given'
+export type ExchangeStatus = 'todo' | 'occurred' | 'cancelled'
+
+export interface Exchange {
+  id: string
+  personId: string
+  personName: string
+  kind: ExchangeKind
+  direction: ExchangeDirection
+  phase: { status: 'todo' | 'cancelled' } | { status: 'occurred'; date: string }
+  content: string
+  plannedDate: string
+  updatedAt: string
+}
+
+export type ExchangeInput = Omit<Exchange, 'id' | 'updatedAt' | 'personName'>
+
 export interface Person {
   id: string
   name: string
@@ -154,6 +172,7 @@ export interface AppData {
   introductions?: Introduction[]
   projects?: PeopleProject[]
   trips?: CityTrip[]
+  exchanges?: Exchange[]
   /** 当前用户自己的资料，单独于 people 管理；null = 尚未创建「我的信息」 */
   me: Person | null
 }

@@ -520,3 +520,51 @@ test('离线约见与远端约见分别合并，相同约见也能合并状态�
     ['甲', 'scheduled', '午饭'], ['乙', 'interested', ''],
   ])
 })
+
+test('礼尚往来的完成操作沿用编号，取消可重开，联系人删除仍保留历史和备份', async () => {
+  const initial = { ...empty, people: [person('甲')] }
+  const f = fixture(initial)
+  const { useStore } = await import('../src/store/useStore.ts?exchanges')
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  const store = () => useStore.getState()
+  await store().hydrate()
+  const gift = { personId: '甲', kind: 'gift', direction: 'given', content: '准备书', plannedDate: '2025-05-02', phase: { status: 'todo' } }
+  const help = { ...gift, kind: 'help', direction: 'received', content: '收到帮助', plannedDate: '', phase: { status: 'occurred', date: '2025-04-21' } }
+  const id = store().saveExchange(gift)
+  const helpId = store().saveExchange(help)
+  assert.ok(id && helpId && id !== helpId)
+  assert.equal(store().saveExchange({ ...gift, phase: { status: 'cancelled' } }, id), id)
+  assert.equal(store().saveExchange(gift, id), id)
+  const completed = { ...gift, phase: { status: 'occurred', date: '2025-05-03' } }
+  assert.equal(store().saveExchange(completed, id), id)
+  assert.equal(store().saveExchange(completed, id), id)
+  assert.equal(store().deletePerson('甲'), true)
+  assert.equal((await store().storageSettled()).ok, true)
+  const backup = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
+  assert.equal(backup.ok, true)
+  assert.equal(backup.data.exchanges.length, 2)
+  assert.deepEqual(backup.data.exchanges[0].phase, { status: 'occurred', date: '2025-05-03' })
+  assert.equal(backup.data.exchanges[0].personName, '甲')
+  assert.equal(store().deleteExchange(helpId), true)
+  assert.equal((await store().storageSettled()).ok, true)
+  assert.equal(f.file.exchanges.length, 1)
+})
+
+test('离线完成往来与远端改内容按编号合并，完成日期跟随状态', async () => {
+  const row = { id: 'gift', personId: '甲', personName: '甲', kind: 'gift', direction: 'given',
+    content: '书', plannedDate: '', phase: { status: 'todo' }, updatedAt: '' }
+  const initial = { ...empty, people: [person('甲')], exchanges: [row] }
+  const f = fixture(initial)
+  const tab = await storage('exchange-offline')
+  const base = (await tab.bootstrap({ data: empty })).snapshot.data
+  f.offline(true)
+  assert.equal((await tab.persist({ data: { ...initial, exchanges: [{
+    ...row, phase: { status: 'occurred', date: '2025-05-01' }, updatedAt: '2025-05-01',
+  }] } }, base)).kind, 'local')
+  f.replaceFile({ ...initial, exchanges: [{ ...row, content: '一本书', updatedAt: '2025-05-02' }] })
+  f.offline(false)
+  assert.equal((await (await storage('exchange-reopened')).bootstrap({ data: empty })).kind, 'file')
+  assert.equal(f.file.exchanges.length, 1)
+  assert.equal(f.file.exchanges[0].content, '一本书')
+  assert.deepEqual(f.file.exchanges[0].phase, { status: 'occurred', date: '2025-05-01' })
+})

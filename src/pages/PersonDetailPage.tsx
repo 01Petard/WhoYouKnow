@@ -21,6 +21,7 @@ import { COPY } from '../util/constants'
 import { circlesOfPerson } from '../util/queries'
 import { newestExperiences } from '../util/experiences'
 import { introductionRoles, introductionRoleLabels } from '../util/introductions'
+import { exchangeDirectionLabels, exchangeKindLabels, exchangeStatusLabels } from '../util/exchanges'
 
 export function PersonDetailPage() {
   const { id = '' } = useParams()
@@ -82,6 +83,8 @@ export function PersonDetailPage() {
   }).sort((a, b) => Number(a.project.archived) - Number(b.project.archived)
     || b.project.updatedAt.localeCompare(a.project.updatedAt))
   const visitCount = (data.trips ?? []).filter((trip) => trip.visits.some((visit) => visit.id === id)).length
+  const exchanges = (data.exchanges ?? []).filter((item) => item.personId === id)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   const deleteMessage = person.contactHistory?.length
     ? `删除「${person.name}」及其 ${person.contactHistory.length} 条联系手记？此操作不可撤销。`
     : COPY.deletePersonDialog(person.name)
@@ -179,6 +182,16 @@ export function PersonDetailPage() {
               </li>)}
             </ul>
           </section>}
+          {exchanges.length > 0 && <section className="experience-backlinks" aria-labelledby="person-exchanges">
+            <h2 className="section-title" id="person-exchanges">礼尚往来</h2>
+            <ul className="experience-people">
+              {exchanges.map((item) => <li key={item.id}>
+                <Link className="project-contact" to={`/exchanges/${encodeURIComponent(item.id)}?person=${encodeURIComponent(id)}`}>{item.content}</Link>
+                <span className="hint"> · {exchangeStatusLabels[item.phase.status]} · {exchangeDirectionLabels[item.direction]}{exchangeKindLabels[item.kind]}</span>
+              </li>)}
+            </ul>
+            <Link className="back-link" to={`/exchanges?person=${encodeURIComponent(id)}&status=${exchanges[0].phase.status}`}>查看全部往来</Link>
+          </section>}
         </div>
 
         <div className="card contact-profile-info">
@@ -247,7 +260,8 @@ export function PersonDetailPage() {
           + (experiences.length ? ` 将从 ${experiences.length} 条共同经历移除此参与人，经历仍会保留。` : '')
           + (introductions.length ? ` ${introductions.length} 条引荐将保留，并标记该档案已移除。` : '')
           + (projects.length ? ` 将退出 ${projects.length} 个项目，关联待办仍会保留。` : '')
-          + (visitCount ? ` 将从 ${visitCount} 次行程移除此人的约见。` : '')}
+          + (visitCount ? ` 将从 ${visitCount} 次行程移除此人的约见。` : '')
+          + (exchanges.length ? ` ${exchanges.length} 条往来将保留，并标记该档案已移除。` : '')}
         confirmLabel="删除"
         destructive
         onClose={() => setPendingDeletePerson(false)}

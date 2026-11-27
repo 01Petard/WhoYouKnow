@@ -11,6 +11,7 @@ import { isDateOnly } from './id'
 import { readIntroductions } from './introductions'
 import { filterProjectMembers, readProjects } from './projects'
 import { cityKey, filterTripVisits, isCity, normalizeCity, readCityTrips, uniqueCities } from './cities'
+import { readExchanges } from './exchanges'
 
 export type ValidationResult =
   | { ok: true; data: AppData; exportedAt?: string }
@@ -193,6 +194,8 @@ export function validateBackup(raw: unknown): ValidationResult {
   if (projects === null) return { ok: false, reason: '人脉项目包含重复编号或无效字段' }
   const trips = raw.trips === undefined ? undefined : readCityTrips(raw.trips)
   if (trips === null) return { ok: false, reason: '城市行程包含重复编号或无效字段' }
+  const exchanges = raw.exchanges === undefined ? undefined : readExchanges(raw.exchanges)
+  if (exchanges === null) return { ok: false, reason: '往来记录包含重复编号或无效字段' }
   const peopleIds = new Set(peopleById.keys())
 
   return {
@@ -207,6 +210,7 @@ export function validateBackup(raw: unknown): ValidationResult {
       ...(introductions ? { introductions } : {}),
       ...(projects ? { projects: projects.map((project) => filterProjectMembers(project, peopleIds)) } : {}),
       ...(trips ? { trips: trips.map((trip) => filterTripVisits(trip, peopleIds)) } : {}),
+      ...(exchanges ? { exchanges } : {}),
       me,
     },
     exportedAt: typeof (raw as Record<string, unknown>).exportedAt === 'string'

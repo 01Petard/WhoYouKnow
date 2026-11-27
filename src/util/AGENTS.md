@@ -8,6 +8,7 @@
 - `contactJournal.ts` 查询最新联系日期、时间线与往年今日。
 - `contactIndex.ts` 按姓名首字母归类联系人。
 - `csv.ts` 按表头导入联系人并导出固定模板。
+- `exchanges.ts` 校验往来类别、方向、计划日期与实际日期。
 - `experiences.ts` 按发生日期倒序排列共同经历。
 - `format.ts` 格式化展示日期、相对时间与首字。
 - `id.ts` 创建标识符并校验日历日期。

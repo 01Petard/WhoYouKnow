@@ -1,0 +1,16 @@
+/*
+ * [INPUT]: 使用主题间距、基础字段和状态操作样式。
+ * [OUTPUT]: 提供往来筛选及表单列布局。
+ * [POS]: 礼尚往来的列表与记录编辑。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+.exchange-filters, .exchange-form-options { display: grid; gap: var(--sp-2); }
+.exchange-filters {
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+  margin-bottom: var(--sp-4);
+}
+.exchange-form-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 540px) {
+  .exchange-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .exchange-filters select:first-child { grid-column: 1 / -1; }
+}
