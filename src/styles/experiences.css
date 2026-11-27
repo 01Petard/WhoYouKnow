@@ -1,0 +1,42 @@
+/*
+ * [INPUT]: 复用主题 Token、卡片、表单和导航样式。
+ * [OUTPUT]: 定义共同经历时间线、详情和参与人选择样式。
+ * [POS]: 共同经历页面及联系人档案中的事件区域。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+.experiences-page { overflow-wrap: anywhere; }
+.experience-search { width: min(100%, 420px); margin-bottom: var(--sp-4); }
+.experience-timeline, .experience-people { list-style: none; padding: 0; margin: 0; }
+.experience-timeline li + li { border-top: 1px solid var(--border-subtle); }
+.experience-timeline a {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  color: inherit;
+}
+.experience-timeline a:hover strong { color: var(--color-action-active); }
+.experience-timeline p { margin: 2px 0 0; }
+.experience-timeline p, .experience-timeline time, .experience-meta { color: var(--text-secondary); }
+.experience-detail { padding: var(--sp-5); margin-bottom: var(--sp-3); }
+.experience-detail h2:not(:first-child) { margin-top: var(--sp-5); }
+.experience-meta, .experience-people { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.experience-meta span { display: inline-flex; gap: var(--sp-1); align-items: center; }
+.experience-note { white-space: pre-wrap; margin-bottom: 0; }
+.experience-form, .experience-picker { display: grid; gap: var(--sp-3); }
+.experience-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.experience-picker legend { padding: 0; margin-bottom: var(--sp-2); }
+.experience-picker-options { max-height: 160px; overflow: auto; border: 1px solid var(--border-subtle); }
+.experience-picker-options label { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2); cursor: pointer; }
+.experience-picker-options label + label { border-top: 1px solid var(--border-subtle); }
+.experience-picker-options input { width: 1rem; height: 1rem; flex: none; }
+.experience-picker-options small { display: block; color: var(--text-secondary); }
+.experience-backlinks { margin: var(--sp-4) 0 0; padding: var(--sp-4); border-top: 1px solid var(--border-subtle); }
+.experience-backlinks ul { display: block; }
+.experience-backlinks li + li { margin-top: var(--sp-2); }
+.experience-backlinks time { color: var(--text-secondary); margin-right: var(--sp-2); }
+@media (max-width: 540px) {
+  .experience-timeline a { grid-template-columns: minmax(0, 1fr) auto; }
+  .experience-timeline time { grid-column: 1 / -1; }
+}

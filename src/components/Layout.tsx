@@ -6,7 +6,7 @@
  */
 import { useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { BookUser, ChevronRight, Folders, Network, Settings, UserRound } from 'lucide-react'
+import { BookUser, CalendarDays, ChevronRight, Folders, Network, Settings, UserRound } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Alert } from './Alert'
 import { Logo } from './Logo'
@@ -15,6 +15,7 @@ import { Avatar } from './PersonCard'
 const NAV = [
   { to: '/people', label: '人脉', Icon: BookUser },
   { to: '/network', label: '关系网', Icon: Network },
+  { to: '/experiences', label: '共同经历', Icon: CalendarDays },
   { to: '/categories', label: '整理分类', Icon: Folders },
   { to: '/settings', label: '系统设置', Icon: Settings },
 ] as const

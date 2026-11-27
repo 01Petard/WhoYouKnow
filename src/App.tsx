@@ -9,6 +9,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import { Layout } from './components/Layout'
 import { ContactJournalPage } from './pages/ContactJournalPage'
+import { ExperiencesPage } from './pages/ExperiencesPage'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonFormPage } from './pages/PersonFormPage'
 import { PersonDetailPage } from './pages/PersonDetailPage'
@@ -65,6 +66,8 @@ export default function App() {
         <Route index element={<Navigate to="/people" replace />} />
         <Route path="/people" element={<PeoplePage />} />
         <Route path="/journal" element={<ContactJournalPage />} />
+        <Route path="/experiences" element={<ExperiencesPage key="list" />} />
+        <Route path="/experiences/:id" element={<ExperiencesPage key="detail" />} />
         <Route path="/person/new" element={<PersonFormPage />} />
         <Route path="/person/:id" element={<PersonDetailPage />} />
         <Route path="/person/:id/edit" element={<PersonFormPage />} />

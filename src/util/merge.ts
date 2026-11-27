@@ -1,8 +1,8 @@
 /**
- * [INPUT]: 依赖 ../types 的 AppData/Circle/Person/ContactEntry
+ * [INPUT]: 读取联系人、联系手记、分类及共同经历的业务快照。
  * [OUTPUT]: 导出 mergeData，用于多标签页写入冲突时的三方合并
  * [POS]: 存储层的纯函数边界；base=本页最后同步的版本，local=本页当前数据，remote=数据文件中的最新数据。
- *        联系手记按记录 ID 独立合并。其他字段发生冲突时按 updatedAt 取新；一侧删除、另一侧未改则删除生效；两侧都改则保留改动。
+ *        手记和共同经历按编号合并。参与人按集合合并，再过滤已移除的联系人。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, Circle, ContactEntry, Person } from '../types'
@@ -42,7 +42,7 @@ function mergeRecord<T extends { updatedAt: string }>(base: T | undefined, local
       )
       return [key, history.length ? history : undefined]
     }
-    if ((key === 'groups' || key === 'tags') && Array.isArray(before) && Array.isArray(mine) && Array.isArray(theirs)) {
+    if ((key === 'groups' || key === 'tags' || key === 'participantIds') && Array.isArray(before) && Array.isArray(mine) && Array.isArray(theirs)) {
       return [key, mergeNames(before, mine, theirs)]
     }
     return [key, latest[key]]
@@ -126,12 +126,21 @@ function mergeMe(base: Person | null, local: Person | null, remote: Person | nul
 export function mergeData(base: AppData, local: AppData, remote: AppData): AppData {
   const people: Person[] = mergeRecords(base.people, local.people, remote.people)
   const circles: Circle[] = mergeRecords(base.circles, local.circles, remote.circles)
+  const me = mergeMe(base.me, local.me, remote.me)
+  const peopleIds = new Set(people.filter((person) => person.id !== me?.id).map((person) => person.id))
+  const experiences = local.experiences || remote.experiences || base.experiences
+    ? mergeRecords(base.experiences ?? [], local.experiences ?? [], remote.experiences ?? []).map((item) => ({
+      ...item,
+      participantIds: item.participantIds.filter((id) => peopleIds.has(id)),
+    }))
+    : undefined
   return {
     version: Math.max(base.version, local.version, remote.version),
     people,
     tags: mergeNames(base.tags, local.tags, remote.tags),
     groups: mergeNames(base.groups, local.groups, remote.groups),
     circles,
-    me: mergeMe(base.me, local.me, remote.me),
+    ...(experiences ? { experiences } : {}),
+    me,
   }
 }

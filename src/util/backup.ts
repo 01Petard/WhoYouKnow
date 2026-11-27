@@ -1,10 +1,10 @@
 /**
  * [INPUT]: 依赖 ../types 的 AppData/BackupFile/Circle/Person 等；依赖 ./constants 的 DATA_VERSION；依赖 ./id 和 ./contactJournal 校验联系日期和方式；依赖浏览器 FileReader
  * [OUTPUT]: 导出 ValidationResult、validateBackup、makeBackup、readJsonFile、readTextFile
- * [POS]: JSON 备份的校验与序列化边界，保留事务目录标记；people 只存联系人，旧 selfId 迁移为 me；旧 edges 字段与状态/方向字段忽略
+ * [POS]: 校验与序列化 JSON 备份。旧 selfId 迁移为 me。共同经历保留有效的参与人引用。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import type { AppData, BackupFile, Circle, ContactEntry, Gender, Person } from '../types'
+import type { AppData, BackupFile, Circle, ContactEntry, Experience, Gender, Person } from '../types'
 import { DATA_VERSION } from './constants'
 import { isContactMethod } from './contactJournal'
 import { isDateOnly } from './id'
@@ -154,6 +154,26 @@ export function validateBackup(raw: unknown): ValidationResult {
     })
   }
 
+  const experiences: Experience[] = []
+  if (raw.experiences !== undefined) {
+    if (!Array.isArray(raw.experiences)) return { ok: false, reason: '共同经历格式错误' }
+    const ids = new Set<string>()
+    for (const item of raw.experiences) {
+      if (
+        !isRecord(item) || typeof item.id !== 'string' || !item.id.trim() || ids.has(item.id)
+        || typeof item.title !== 'string' || !item.title.trim() || !isDateOnly(item.date)
+        || typeof item.place !== 'string' || typeof item.note !== 'string' || typeof item.updatedAt !== 'string'
+        || !Array.isArray(item.participantIds) || item.participantIds.some((id) => typeof id !== 'string')
+      ) return { ok: false, reason: '共同经历包含重复编号或无效字段' }
+      ids.add(item.id)
+      experiences.push({
+        id: item.id, title: item.title.trim(), date: item.date, place: item.place,
+        note: item.note, updatedAt: item.updatedAt,
+        participantIds: [...new Set<string>(item.participantIds)].filter((id) => peopleById.has(id)),
+      })
+    }
+  }
+
   return {
     ok: true,
     data: {
@@ -162,6 +182,7 @@ export function validateBackup(raw: unknown): ValidationResult {
       tags,
       groups,
       circles,
+      ...(raw.experiences !== undefined ? { experiences } : {}),
       me,
     },
     exportedAt: typeof (raw as Record<string, unknown>).exportedAt === 'string'

@@ -65,7 +65,7 @@
   padding: 4px max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left));
   min-height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   box-shadow: var(--shadow-tabbar);

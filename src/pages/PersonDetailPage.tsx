@@ -1,11 +1,11 @@
 /**
- * [INPUT]: 读取联系人、最新联系日期、分类与手记。复用 DateField 选择联系日期。通过状态仓库写入联系标记和事务目录状态。
+ * [INPUT]: 读取联系人、分类、手记和共同经历。复用 DateField 选择联系日期。通过状态仓库写入联系标记和事务目录状态。
  * [OUTPUT]: 导出 PersonDetailPage。
- * [POS]: 将联系人档案分成联系活动与资料。保留分类导航及编辑、删除入口。
+ * [POS]: 将联系人档案分成联系活动与资料。共同经历回链指向原始事件。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { DateField } from '../components/DateField'
 import { ContactHistory } from '../components/ContactHistory'
@@ -18,6 +18,7 @@ import { latestContactDate } from '../util/contactJournal'
 import { today } from '../util/id'
 import { COPY } from '../util/constants'
 import { circlesOfPerson } from '../util/queries'
+import { newestExperiences } from '../util/experiences'
 
 export function PersonDetailPage() {
   const { id = '' } = useParams()
@@ -61,6 +62,10 @@ export function PersonDetailPage() {
   }
 
   const lastContact = latestContactDate(person)
+  const experiences = newestExperiences((data.experiences ?? []).filter((item) => item.participantIds.includes(id)))
+  const deleteMessage = person.contactHistory?.length
+    ? `删除「${person.name}」及其 ${person.contactHistory.length} 条联系手记？此操作不可撤销。`
+    : COPY.deletePersonDialog(person.name)
 
   return (
     <div className="content contact-profile">
@@ -126,6 +131,15 @@ export function PersonDetailPage() {
             </details>
           </section>
           <ContactHistory person={person} key={id} />
+          {experiences.length > 0 && <section className="experience-backlinks" aria-labelledby="person-experiences">
+            <h2 className="section-title" id="person-experiences">共同经历</h2>
+            <ul className="experience-people">
+              {experiences.map((item) => <li key={item.id}>
+                <time dateTime={item.date}>{item.date}</time>
+                <Link className="text-link" to={`/experiences/${encodeURIComponent(item.id)}`}>{item.title}</Link>
+              </li>)}
+            </ul>
+          </section>}
         </div>
 
         <div className="card contact-profile-info">
@@ -189,7 +203,7 @@ export function PersonDetailPage() {
       <ConfirmDialog
         open={pendingDeletePerson}
         title="删除人物"
-        message={person.contactHistory?.length ? `删除「${person.name}」及其 ${person.contactHistory.length} 条联系手记？此操作不可撤销。` : COPY.deletePersonDialog(person.name)}
+        message={deleteMessage + (experiences.length ? ` 将从 ${experiences.length} 条共同经历移除此参与人，经历仍会保留。` : '')}
         confirmLabel="删除"
         destructive
         onClose={() => setPendingDeletePerson(false)}

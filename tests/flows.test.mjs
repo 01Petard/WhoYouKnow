@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 使用 Node test、模拟文件 API 和浏览器存储。
- * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系、事务目录和手记的回归测试。
+ * [OUTPUT]: 覆盖保存、备份恢复、CSV 导入、待联系、事务目录、手记和共同经历的回归测试。
  * [POS]: 验证核心数据流程，不访问项目真实数据文件。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
@@ -300,4 +300,55 @@ test('手记备份保留记录，最新日期更新待联系，往年今日排�
   assert.equal(validateBackup(original).ok, true)
   const invalid = { ...data, people: [person('重复编号', { contactHistory:[history[0], history[0]] })] }
   assert.equal(validateBackup(invalid).ok, false)
+})
+
+test('共同经历关联三位参与人，备份往返保留编号，移除联系人保留事件', async () => {
+  const people = ['甲', '乙', '丙'].map((id) => person(id))
+  const initial = { ...empty, people }
+  const f = fixture(initial)
+  const { useStore } = await import('../src/store/useStore.ts?experiences')
+  const store = () => useStore.getState()
+  const { makeBackup, validateBackup } = await import('../src/util/backup.ts')
+  await store().hydrate()
+  const draft = { title: '活动', date: '2025-05-04', place: '公园', note: '初稿', participantIds: [] }
+  assert.equal(store().saveExperience(draft), null)
+  const id = store().saveExperience({ ...draft, participantIds: ['甲', '乙', '甲', '丙'] })
+  assert.ok(id)
+  assert.equal(store().saveExperience({ ...draft, participantIds: ['甲', '乙', '丙'], note: '更新' }, id), id)
+  await store().storageSettled()
+  const restored = validateBackup(JSON.parse(JSON.stringify(makeBackup(f.file))))
+  assert.equal(restored.ok, true)
+  assert.deepEqual(restored.data.experiences.map(({ id, participantIds, note }) => ({ id, participantIds, note })), [
+    { id, participantIds: ['甲', '乙', '丙'], note: '更新' },
+  ])
+  assert.equal(validateBackup(initial).ok, true)
+  assert.equal(validateBackup({ ...f.file, experiences: [f.file.experiences[0], f.file.experiences[0]] }).ok, false)
+
+  assert.equal(store().deletePerson('丙'), true)
+  assert.deepEqual(store().data.experiences[0].participantIds, ['甲', '乙'])
+  assert.equal(store().saveExperience(draft, id), id)
+  assert.deepEqual(store().data.experiences[0].participantIds, [])
+  assert.equal(store().deleteExperience(id), true)
+  assert.equal((await store().storageSettled()).ok, true)
+  assert.deepEqual(f.file.experiences, [])
+})
+
+test('共同经历离线草稿重试时合并不同字段、并发新增参与人与联系人删除', async () => {
+  const record = { id: 'event', title: '活动', date: '2025-05-04', place: '', note: '', participantIds: ['甲'], updatedAt: '' }
+  const initial = { ...empty, people: ['甲', '乙', '丙'].map((id) => person(id)), experiences: [record] }
+  const f = fixture(initial)
+  const tab = await storage('experience-offline')
+  const base = (await tab.bootstrap({ data: empty })).snapshot.data
+  f.offline(true)
+  assert.equal((await tab.persist({ data: { ...initial, experiences: [
+    { ...record, note: '离线补记', participantIds: ['甲', '乙'], updatedAt: '2025-05-05T08:00:00.000Z' },
+  ] } }, base)).kind, 'local')
+  f.replaceFile({ ...initial, people: initial.people.slice(1), experiences: [
+    { ...record, place: '远端地点', participantIds: ['丙'], updatedAt: '2025-05-05T09:00:00.000Z' },
+  ] })
+  f.offline(false)
+  assert.equal((await (await storage('experience-reopened')).bootstrap({ data: empty })).kind, 'file')
+  assert.equal(f.file.experiences[0].note, '离线补记')
+  assert.equal(f.file.experiences[0].place, '远端地点')
+  assert.deepEqual(new Set(f.file.experiences[0].participantIds), new Set(['乙', '丙']))
 })

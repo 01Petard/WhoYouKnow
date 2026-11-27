@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 不导入任何模块；定义 store、util、components、pages 共用的领域模型
- * [OUTPUT]: 导出 Person、Circle、AppData、BackupFile、StorageSnapshot、PersonInput、ContactEntry、PeopleView、FilterState 等
- * [POS]: 全项目唯一的领域类型定义处；people 只存联系人，me 单独存当前用户；事务联系人以人物标记持久化；系统不保存联系人之间的关系边
+ * [OUTPUT]: 导出联系人、联系手记、共同经历、分类、备份和筛选模型。
+ * [POS]: people 保存联系人，me 保存当前用户。共同经历按联系人编号关联参与人。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 export type Gender = '男' | '女' | '其他'
@@ -17,6 +17,18 @@ export interface ContactEntry {
 }
 
 export type ContactEntryInput = Pick<ContactEntry, 'date' | 'method' | 'note'>
+
+export interface Experience {
+  id: string
+  title: string
+  date: string
+  place: string
+  note: string
+  participantIds: string[]
+  updatedAt: string
+}
+
+export type ExperienceInput = Omit<Experience, 'id' | 'updatedAt'>
 
 export interface Person {
   id: string
@@ -61,6 +73,7 @@ export interface AppData {
   tags: string[]
   groups: string[]
   circles: Circle[]
+  experiences?: Experience[]
   /** 当前用户自己的资料，单独于 people 管理；null = 尚未创建「我的信息」 */
   me: Person | null
 }

@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 zustand 的 create；依赖 ../types 全部领域类型；依赖 ../util/constants 的 DATA_VERSION；依赖 ../util/id 的 today/uid；依赖 ../util/csv 的 ParsedCsvRow；依赖 ../util/storage 的 bootstrap/persist/reloadFromFile
  * [OUTPUT]: 导出 useStore、UiState、emptyData，并再导出 today
- * [POS]: 管理联系人、事务目录状态、联系手记和我的资料；常规改动即时更新界面，备份恢复等待持久化。
+ * [POS]: 写入联系人、联系手记、共同经历和我的资料。常规改动即时更新界面，备份恢复等待持久化。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { create } from 'zustand'
@@ -9,6 +9,7 @@ import {
   type AppData,
   type Circle,
   type ContactEntryInput,
+  type ExperienceInput,
   type FilterState,
   type Person,
   type PeopleView,
@@ -51,6 +52,15 @@ interface Persisted {
 }
 
 const nowIso = () => new Date().toISOString()
+
+function removeExperienceParticipant(data: AppData, id: string): Pick<AppData, 'experiences'> {
+  if (!data.experiences) return {}
+  return {
+    experiences: data.experiences.map((item) => item.participantIds.includes(id)
+      ? { ...item, participantIds: item.participantIds.filter((personId) => personId !== id) }
+      : item),
+  }
+}
 
 /** 两个列表是否包含完全相同的元素集合（顺序无关） */
 function sameSet(source: string[], next: string[]): boolean {
@@ -116,11 +126,13 @@ interface Store extends Persisted {
   addPerson: (input: PersonInput) => boolean
   updatePerson: (id: string, input: PersonInput) => boolean
   deletePerson: (id: string) => boolean
+  saveExperience: (input: ExperienceInput, id?: string) => string | null
+  deleteExperience: (id: string) => boolean
   /** 创建当前用户资料；已存在则失败 */
   createMe: (input: PersonInput) => boolean
   /** 更新当前用户资料；未创建则失败 */
   updateMe: (input: PersonInput) => boolean
-  /** 把一位已有联系人迁移成「我」：从 people 移除，并清理涉及 TA 的关系边 */
+  /** 把一位已有联系人迁移成「我」，解除此人作为共同经历参与人的关联。 */
   adoptAsMe: (personId: string) => boolean
   setLastContact: (id: string, date?: string) => boolean
   saveContactEntry: (personId: string, input: ContactEntryInput, entryId?: string) => boolean
@@ -283,8 +295,31 @@ export const useStore = create<Store>((set, get) => {
         data: {
           ...data,
           people: data.people.filter((p) => p.id !== id),
+          ...removeExperienceParticipant(data, id),
         },
       })
+    },
+
+    saveExperience(input, id) {
+      const data = get().data
+      const experiences = data.experiences ?? []
+      const title = input.title.trim()
+      const participantIds = [...new Set(input.participantIds)]
+      const peopleIds = new Set(data.people.map((person) => person.id))
+      if (!title || !isDateOnly(input.date) || participantIds.some((personId) => !peopleIds.has(personId))) return null
+      if (id ? !experiences.some((item) => item.id === id) : !participantIds.length) return null
+      const entry = {
+        ...input, id: id ?? uid(), title, participantIds,
+        note: input.note.trim(), place: input.place.trim(), updatedAt: nowIso(),
+      }
+      const next = id ? experiences.map((item) => item.id === id ? entry : item) : [...experiences, entry]
+      return commit({ data: { ...data, experiences: next } }) ? entry.id : null
+    },
+
+    deleteExperience(id) {
+      const data = get().data
+      if (!data.experiences?.some((item) => item.id === id)) return false
+      return commit({ data: { ...data, experiences: data.experiences.filter((item) => item.id !== id) } })
     },
 
     createMe(input) {
@@ -318,6 +353,7 @@ export const useStore = create<Store>((set, get) => {
           ...data,
           me: person,
           people: data.people.filter((p) => p.id !== personId),
+          ...removeExperienceParticipant(data, personId),
         },
       })
     },
