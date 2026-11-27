@@ -108,18 +108,18 @@
 .person-card + .person-card { border-top: 1px solid var(--bg-subtle); }
 .person-card:hover { background: var(--color-action-wash); }
 .person-card:focus-visible { outline-offset: -3px; border-radius: var(--radius-xs); }
-.directory-person, .person-name-row, .person-groups { display: flex; align-items: center; min-width: 0; }
+.directory-person, .person-name-row, .person-classification { display: flex; align-items: center; min-width: 0; }
 .directory-person { gap: 11px; }
 .person-name-row { gap: 6px; }
 .person-info { display: grid; gap: 2px; min-width: 0; }
 .person-name { color: var(--text-heading); font-size: 15px; font-weight: var(--fw-semibold); line-height: 1.35; }
-.person-name, .person-sub, .person-group { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-name, .person-sub, .person-classification-chip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person-sub { color: var(--text-secondary); font-size: 12px; line-height: 1.35; }
-.person-groups { gap: 4px; font-size: 12px; }
-.person-group, .person-group-count { padding: 2px 7px; border-radius: var(--radius-xs); background: var(--bg-subtle); }
+.person-classification { gap: 4px; font-size: 12px; }
+.person-classification-chip, .person-group-count { padding: 2px 7px; border-radius: var(--radius-xs); background: var(--bg-subtle); }
 .person-group-count { flex: none; }
-.person-classification, .person-muted { color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
-.person-classification { overflow: hidden; text-overflow: ellipsis; }
+.person-classification-wrap { flex-wrap: wrap; }
+.person-classification-chip { max-width: 100%; }
 .person-chevron { color: var(--text-placeholder); }
 .person-card:hover .person-chevron { color: var(--color-action); }
 .person-card .star { font-size: 13px; flex: none; }

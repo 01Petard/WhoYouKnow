@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 路由链接、联系人字段、所属圈子与星标。
+ * [INPUT]: 依赖路由链接、联系人字段、所属圈子与星标。
  * [OUTPUT]: 导出 Avatar 和 PersonCard。
  * [POS]: 各页面共用头像，目录行展示姓名、分组、圈子和标签。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
@@ -22,8 +22,6 @@ export function Avatar({ person, small = false }: { person: Pick<Person, 'name' 
 }
 
 export function PersonCard({ person, circles }: { person: Person; circles: Circle[] }) {
-  const circleNames = circles.map(({ name }) => name).join('、')
-  const tagNames = person.tags.join('、')
   const subtitle = person.channel
   const group = person.groups[0]
   const groupCount = person.groups.length - 1
@@ -40,20 +38,26 @@ export function PersonCard({ person, circles }: { person: Person; circles: Circl
           {subtitle && <span className="person-sub">{subtitle}</span>}
         </span>
       </span>
-      <span className="person-groups">
-        <span className="sr-only">分组：</span>
-        {group ? (
+      <span className="person-classification">
+        {group && (
           <>
-            <span className="person-group" title={person.groups.join('、')}>{group}</span>
+            <span className="sr-only">分组：</span>
+            <span className="person-classification-chip" title={person.groups.join('、')}>{group}</span>
             {groupCount > 0 && <span className="person-group-count">+{groupCount}</span>}
           </>
-        ) : <span className="person-muted">未分组</span>}
+        )}
       </span>
-      <span className="person-classification" title={circleNames || undefined}>
-        <span className="sr-only">圈子：</span>{circleNames || '未加入圈子'}
+      <span className="person-classification person-classification-wrap">
+        {circles.length > 0 && <span className="sr-only">圈子：</span>}
+        {circles.map(({ id, name }) => (
+          <span className="person-classification-chip" key={id} title={name}>{name}</span>
+        ))}
       </span>
-      <span className="person-classification" title={tagNames || undefined}>
-        <span className="sr-only">标签：</span>{tagNames || '无标签'}
+      <span className="person-classification person-classification-wrap">
+        {person.tags.length > 0 && <span className="sr-only">标签：</span>}
+        {person.tags.map((tag) => (
+          <span className="person-classification-chip" key={tag} title={tag}>{tag}</span>
+        ))}
       </span>
       <ChevronRight className="person-chevron" size={16} aria-hidden="true" />
     </Link>
