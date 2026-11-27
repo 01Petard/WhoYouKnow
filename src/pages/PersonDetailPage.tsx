@@ -1,14 +1,15 @@
 /**
  * [INPUT]: 读取联系人、分类、手记和工作台记录。复用 DateField 选择联系日期。
  * [OUTPUT]: 导出 PersonDetailPage。
- * [POS]: 并列展示联系活动与资料，并回链此人参与的经历、引荐和项目。
+ * [POS]: 并列展示联系活动与资料，编辑居住城市并回链工作台记录。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
-import { useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { DateField } from '../components/DateField'
 import { ContactHistory } from '../components/ContactHistory'
+import { ContactCities } from '../components/ContactCities'
 import { ConfirmDialog } from '../components/Modal'
 import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
@@ -23,6 +24,7 @@ import { introductionRoles, introductionRoleLabels } from '../util/introductions
 
 export function PersonDetailPage() {
   const { id = '' } = useParams()
+  const { hash } = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
   const data = useStore((s) => s.data)
@@ -40,6 +42,9 @@ export function PersonDetailPage() {
     () => (person ? circlesOfPerson(data, person) : []),
     [data, person],
   )
+  useEffect(() => {
+    if (person && hash === '#contact-history') document.getElementById('contact-history')?.scrollIntoView({ block: 'start' })
+  }, [person, hash])
 
   if (!person) {
     return (
@@ -76,6 +81,7 @@ export function PersonDetailPage() {
     return member ? [{ project, member }] : []
   }).sort((a, b) => Number(a.project.archived) - Number(b.project.archived)
     || b.project.updatedAt.localeCompare(a.project.updatedAt))
+  const visitCount = (data.trips ?? []).filter((trip) => trip.visits.some((visit) => visit.id === id)).length
   const deleteMessage = person.contactHistory?.length
     ? `删除「${person.name}」及其 ${person.contactHistory.length} 条联系手记？此操作不可撤销。`
     : COPY.deletePersonDialog(person.name)
@@ -185,6 +191,7 @@ export function PersonDetailPage() {
               <div><dt>性别</dt><dd>{person.gender || '未填写'}</dd></div>
             </dl>
           </section>
+          <ContactCities person={person} key={id} />
           <section className="contact-profile-info-section" aria-labelledby="person-note-heading">
             <h2 id="person-note-heading" className="section-title">备注</h2>
             {person.note ? <p className="contact-profile-note">{person.note}</p> : <p className="hint">暂无备注</p>}
@@ -239,7 +246,8 @@ export function PersonDetailPage() {
         message={deleteMessage
           + (experiences.length ? ` 将从 ${experiences.length} 条共同经历移除此参与人，经历仍会保留。` : '')
           + (introductions.length ? ` ${introductions.length} 条引荐将保留，并标记该档案已移除。` : '')
-          + (projects.length ? ` 将退出 ${projects.length} 个项目，关联待办仍会保留。` : '')}
+          + (projects.length ? ` 将退出 ${projects.length} 个项目，关联待办仍会保留。` : '')
+          + (visitCount ? ` 将从 ${visitCount} 次行程移除此人的约见。` : '')}
         confirmLabel="删除"
         destructive
         onClose={() => setPendingDeletePerson(false)}

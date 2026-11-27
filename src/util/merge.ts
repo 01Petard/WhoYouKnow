@@ -2,11 +2,12 @@
  * [INPUT]: 读取联系人、联系手记、分类与工作台的业务快照。
  * [OUTPUT]: 导出 mergeData，用于多标签页写入冲突时的三方合并
  * [POS]: 存储层的纯函数边界；base=本页最后同步的版本，local=本页当前数据，remote=数据文件中的最新数据。
- *        记录按编号合并。项目成员和待办独立合并。过滤失效的参与人和成员引用。
+ *        记录按编号合并。项目成员、待办和约见独立合并。过滤失效的联系人引用。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import type { AppData, Circle, ContactEntry, Person } from '../types'
 import { filterProjectMembers } from './projects'
+import { filterTripVisits } from './cities'
 
 function same(a: unknown, b: unknown): boolean {
   if (a === b) return true
@@ -35,7 +36,7 @@ function mergeRecord<T extends { updatedAt: string }>(base: T | undefined, local
     const theirs = remote[key]
     if (same(mine, before)) return [key, theirs]
     if (same(theirs, before)) return [key, mine]
-    if (key === 'contactHistory' || key === 'members' || key === 'tasks') {
+    if (key === 'contactHistory' || key === 'members' || key === 'tasks' || key === 'visits') {
       const history = mergeRecords(
         (before ?? []) as Pick<ContactEntry, 'id' | 'updatedAt'>[],
         (mine ?? []) as Pick<ContactEntry, 'id' | 'updatedAt'>[],
@@ -141,6 +142,9 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
   const projects = local.projects || remote.projects || base.projects
     ? mergeRecords(base.projects ?? [], local.projects ?? [], remote.projects ?? []).map((item) => filterProjectMembers(item, peopleIds))
     : undefined
+  const trips = local.trips || remote.trips || base.trips
+    ? mergeRecords(base.trips ?? [], local.trips ?? [], remote.trips ?? []).map((trip) => filterTripVisits(trip, peopleIds))
+    : undefined
   return {
     version: Math.max(base.version, local.version, remote.version),
     people,
@@ -150,6 +154,7 @@ export function mergeData(base: AppData, local: AppData, remote: AppData): AppDa
     ...(experiences ? { experiences } : {}),
     ...(introductions ? { introductions } : {}),
     ...(projects ? { projects } : {}),
+    ...(trips ? { trips } : {}),
     me,
   }
 }

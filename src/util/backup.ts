@@ -10,6 +10,7 @@ import { isContactMethod } from './contactJournal'
 import { isDateOnly } from './id'
 import { readIntroductions } from './introductions'
 import { filterProjectMembers, readProjects } from './projects'
+import { cityKey, filterTripVisits, isCity, normalizeCity, readCityTrips, uniqueCities } from './cities'
 
 export type ValidationResult =
   | { ok: true; data: AppData; exportedAt?: string }
@@ -62,6 +63,14 @@ export function validateBackup(raw: unknown): ValidationResult {
       return '人物数据中存在缺失 id 或姓名的记录'
     }
     const entries: ContactEntry[] = []
+    if ((item.currentCity !== undefined && !isCity(item.currentCity))
+      || (item.pastCities !== undefined && (!Array.isArray(item.pastCities) || !item.pastCities.every(isCity)))) {
+      return '人物城市数据格式错误'
+    }
+    const currentCity = isCity(item.currentCity) ? normalizeCity(item.currentCity) : undefined
+    const pastCities = Array.isArray(item.pastCities)
+      ? uniqueCities(item.pastCities).filter((city) => !currentCity || cityKey(city) !== cityKey(currentCity))
+      : undefined
     if (item.contactHistory !== undefined) {
       if (!Array.isArray(item.contactHistory)) return '联系手记格式错误'
       const ids = new Set<string>()
@@ -83,6 +92,8 @@ export function validateBackup(raw: unknown): ValidationResult {
       birthday: typeof item.birthday === 'string' ? item.birthday : undefined,
       channel: asString(item.channel),
       metAt: asString(item.metAt),
+      currentCity,
+      pastCities,
       lastContactAt: isDateOnly(item.lastContactAt) ? item.lastContactAt : undefined,
       contactHistory: entries.length ? entries : undefined,
       note: asString(item.note) || legacyNoteById.get(item.id) || '',
@@ -180,6 +191,8 @@ export function validateBackup(raw: unknown): ValidationResult {
   if (introductions === null) return { ok: false, reason: '引荐包含重复编号或无效字段' }
   const projects = raw.projects === undefined ? undefined : readProjects(raw.projects)
   if (projects === null) return { ok: false, reason: '人脉项目包含重复编号或无效字段' }
+  const trips = raw.trips === undefined ? undefined : readCityTrips(raw.trips)
+  if (trips === null) return { ok: false, reason: '城市行程包含重复编号或无效字段' }
   const peopleIds = new Set(peopleById.keys())
 
   return {
@@ -193,6 +206,7 @@ export function validateBackup(raw: unknown): ValidationResult {
       ...(raw.experiences !== undefined ? { experiences } : {}),
       ...(introductions ? { introductions } : {}),
       ...(projects ? { projects: projects.map((project) => filterProjectMembers(project, peopleIds)) } : {}),
+      ...(trips ? { trips: trips.map((trip) => filterTripVisits(trip, peopleIds)) } : {}),
       me,
     },
     exportedAt: typeof (raw as Record<string, unknown>).exportedAt === 'string'

@@ -35,7 +35,7 @@ export function ContactHistory({ person }: { person: Person }) {
   }
 
   return (
-    <section className="card person-panel contact-history" aria-labelledby="contact-history-title">
+    <section className="card person-panel contact-history" id="contact-history" aria-labelledby="contact-history-title">
       <div className="contact-history-heading">
         <h2 id="contact-history-title" className="section-title"><BookOpen size={19} aria-hidden="true" /> 联系手记</h2>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => open()}>

@@ -78,6 +78,33 @@ export interface PeopleProject {
 
 export type PeopleProjectInput = Omit<PeopleProject, 'id' | 'updatedAt'>
 
+export interface City {
+  name: string
+  region: string
+}
+
+export type VisitStatus = 'interested' | 'scheduled' | 'met' | 'cancelled'
+
+export interface CityVisit {
+  /** 联系人编号，在同一行程内唯一。 */
+  id: string
+  status: VisitStatus
+  date: string
+  note: string
+  updatedAt: string
+}
+
+export interface CityTrip {
+  id: string
+  city: City
+  start: string
+  end: string
+  visits: CityVisit[]
+  updatedAt: string
+}
+
+export type CityTripInput = Omit<CityTrip, 'id' | 'updatedAt'>
+
 export interface Person {
   id: string
   name: string
@@ -86,6 +113,8 @@ export interface Person {
   birthday?: string
   channel: string
   metAt: string
+  currentCity?: City
+  pastCities?: City[]
   /** 手动标记的日期。展示时与手记日期比较。 */
   lastContactAt?: string
   contactHistory?: ContactEntry[]
@@ -124,6 +153,7 @@ export interface AppData {
   experiences?: Experience[]
   introductions?: Introduction[]
   projects?: PeopleProject[]
+  trips?: CityTrip[]
   /** 当前用户自己的资料，单独于 people 管理；null = 尚未创建「我的信息」 */
   me: Person | null
 }

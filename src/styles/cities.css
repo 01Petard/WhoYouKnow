@@ -1,0 +1,16 @@
+/*
+ * [INPUT]: 使用主题 Token、卡片、表单和项目列表样式。
+ * [OUTPUT]: 定义城市目录、城市编辑与行程的响应式布局。
+ * [POS]: 联系人档案和「到一座城」页面。
+ * [PROTOCOL]: Update this header on change, then check AGENTS.md
+ */
+.city-workspace { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--sp-4); align-items: start; }
+.city-workspace > section > .section-title { margin-bottom: var(--sp-3); }
+.city-section-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.city-form, .city-form fieldset { display: grid; gap: var(--sp-3); }
+.city-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.city-form legend { font-weight: var(--fw-semibold); padding: 0; margin-bottom: var(--sp-2); }
+.city-form fieldset + fieldset { padding-top: var(--sp-2); border-top: 1px solid var(--border-subtle); }
+@media (max-width: 700px) {
+  .city-workspace { grid-template-columns: minmax(0, 1fr); }
+}

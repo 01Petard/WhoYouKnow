@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 依赖 zustand 的 create；依赖 ../types 全部领域类型；依赖 ../util/constants 的 DATA_VERSION；依赖 ../util/id 的 today/uid；依赖 ../util/csv 的 ParsedCsvRow；依赖 ../util/storage 的 bootstrap/persist/reloadFromFile
  * [OUTPUT]: 导出 useStore、UiState、emptyData，并再导出 today
- * [POS]: 写入联系人、联系手记、工作台和我的资料。常规改动即时更新界面，备份恢复等待持久化。
+ * [POS]: 保存联系人、手记和我的资料，装配工作台操作。所有写入共用保存队列。
  * [PROTOCOL]: Update this header on change, then check AGENTS.md
  */
 import { create } from 'zustand'
@@ -9,10 +9,7 @@ import {
   type AppData,
   type Circle,
   type ContactEntryInput,
-  type ExperienceInput,
   type FilterState,
-  type IntroductionInput,
-  type PeopleProjectInput,
   type Person,
   type PeopleView,
   type PersonInput,
@@ -21,8 +18,9 @@ import {
 import { isContactMethod } from '../util/contactJournal'
 import { DATA_VERSION } from '../util/constants'
 import { isDateOnly, today, uid } from '../util/id'
-import { introductionIssue, introductionRoles } from '../util/introductions'
-import { filterProjectMembers, isProjectInput } from '../util/projects'
+import { filterProjectMembers } from '../util/projects'
+import { filterTripVisits } from '../util/cities'
+import { workspaceActions, type WorkspaceActions } from './workspaceActions'
 import type { ParsedCsvRow } from '../util/csv'
 import { bootstrap, persist, reloadFromFile, type PersistResult } from '../util/storage'
 
@@ -57,13 +55,14 @@ interface Persisted {
 
 const nowIso = () => new Date().toISOString()
 
-function removeContactMemberships(data: AppData, id: string): Pick<AppData, 'experiences' | 'projects'> {
+function removeContactMemberships(data: AppData, id: string): Pick<AppData, 'experiences' | 'projects' | 'trips'> {
   const peopleIds = new Set(data.people.filter((person) => person.id !== id).map((person) => person.id))
   return {
     experiences: data.experiences?.map((item) => item.participantIds.includes(id)
       ? { ...item, participantIds: item.participantIds.filter((personId) => personId !== id) }
       : item),
     projects: data.projects?.map((project) => filterProjectMembers(project, peopleIds)),
+    trips: data.trips?.map((trip) => filterTripVisits(trip, peopleIds)),
   }
 }
 
@@ -110,7 +109,7 @@ function makePerson(input: PersonInput): Person {
   }
 }
 
-interface Store extends Persisted {
+interface Store extends Persisted, WorkspaceActions {
   ui: UiState
   storageError: boolean
   storageSaving: boolean
@@ -131,15 +130,11 @@ interface Store extends Persisted {
   addPerson: (input: PersonInput) => boolean
   updatePerson: (id: string, input: PersonInput) => boolean
   deletePerson: (id: string) => boolean
-  saveExperience: (input: ExperienceInput, id?: string) => string | null
-  deleteExperience: (id: string) => boolean
-  saveIntroduction: (input: IntroductionInput, id?: string) => string | null
-  saveProject: (input: PeopleProjectInput, id?: string) => string | null
   /** 创建当前用户资料；已存在则失败 */
   createMe: (input: PersonInput) => boolean
   /** 更新当前用户资料；未创建则失败 */
   updateMe: (input: PersonInput) => boolean
-  /** 把一位已有联系人迁移成「我」，解除此人的经历与项目成员关联。 */
+  /** 把一位已有联系人迁移成「我」，解除经历、项目和行程成员关联。 */
   adoptAsMe: (personId: string) => boolean
   setLastContact: (id: string, date?: string) => boolean
   saveContactEntry: (personId: string, input: ContactEntryInput, entryId?: string) => boolean
@@ -218,6 +213,7 @@ export const useStore = create<Store>((set, get) => {
   }
 
   return {
+    ...workspaceActions(() => get().data, commit),
     data: emptyData(),
     ui: initialUi,
     storageError: false,
@@ -285,6 +281,8 @@ export const useStore = create<Store>((set, get) => {
         practical: previous?.practical,
         lastContactAt: previous?.lastContactAt,
         contactHistory: previous?.contactHistory,
+        currentCity: previous?.currentCity,
+        pastCities: previous?.pastCities,
         createdAt: previous?.createdAt ?? person.createdAt,
       }
       return commit({
@@ -305,64 +303,6 @@ export const useStore = create<Store>((set, get) => {
           ...removeContactMemberships(data, id),
         },
       })
-    },
-
-    saveExperience(input, id) {
-      const data = get().data
-      const experiences = data.experiences ?? []
-      const title = input.title.trim()
-      const participantIds = [...new Set(input.participantIds)]
-      const peopleIds = new Set(data.people.map((person) => person.id))
-      if (!title || !isDateOnly(input.date) || participantIds.some((personId) => !peopleIds.has(personId))) return null
-      if (id ? !experiences.some((item) => item.id === id) : !participantIds.length) return null
-      const entry = {
-        ...input, id: id ?? uid(), title, participantIds,
-        note: input.note.trim(), place: input.place.trim(), updatedAt: nowIso(),
-      }
-      const next = id ? experiences.map((item) => item.id === id ? entry : item) : [...experiences, entry]
-      return commit({ data: { ...data, experiences: next } }) ? entry.id : null
-    },
-
-    deleteExperience(id) {
-      const data = get().data
-      if (!data.experiences?.some((item) => item.id === id)) return false
-      return commit({ data: { ...data, experiences: data.experiences.filter((item) => item.id !== id) } })
-    },
-
-    saveIntroduction(input, id) {
-      const data = get().data
-      const introductions = data.introductions ?? []
-      const previous = introductions.find((item) => item.id === id)
-      if ((id && !previous) || introductionIssue(input)) return null
-      const people = new Map(data.people.map((person) => [person.id, person]))
-      const parties = { ...input.parties }
-      for (const role of introductionRoles) {
-        const party = parties[role]
-        if (party.kind !== 'contact') continue
-        const person = people.get(party.personId)
-        const former = previous?.parties[role]
-        if (!person && (former?.kind !== 'contact' || former.personId !== party.personId)) return null
-        parties[role] = { ...party, name: person?.name ?? (former?.kind === 'contact' ? former.name : party.name) }
-      }
-      const entry = { ...input, parties, id: id ?? uid(), reason: input.reason.trim(), updatedAt: nowIso() }
-      const next = previous ? introductions.map((item) => item === previous ? entry : item) : [...introductions, entry]
-      return commit({ data: { ...data, introductions: next } }) ? entry.id : null
-    },
-
-    saveProject(input, id) {
-      const data = get().data
-      const projects = data.projects ?? []
-      const previous = projects.find((item) => item.id === id)
-      if ((id && !previous) || !isProjectInput(input)) return null
-      const peopleIds = new Set(data.people.map((person) => person.id))
-      if (input.members.some((member) => !peopleIds.has(member.id))) return null
-      const memberIds = new Set(input.members.map((member) => member.id))
-      const earlierTasks = new Map(previous?.tasks.map((task) => [task.id, task.memberId]))
-      if (input.tasks.some((task) => task.memberId && !memberIds.has(task.memberId)
-        && earlierTasks.get(task.id) !== task.memberId)) return null
-      const updated = { ...input, id: id ?? uid(), name: input.name.trim(), description: input.description.trim(), updatedAt: nowIso() }
-      const next = previous ? projects.map((item) => item === previous ? updated : item) : [...projects, updated]
-      return commit({ data: { ...data, projects: next } }) ? updated.id : null
     },
 
     createMe(input) {

@@ -4,7 +4,8 @@
 
 - `Alert.tsx` 展示页面内持续提示。
 - `BackupPanel.tsx` 在设置和首次启动页预览并恢复备份。
-- `ContactHistory.tsx` 显示并编辑联系人档案中的手记。
+- `ContactCities.tsx` 在档案中维护居住城市。行程复用城市输入和已有城市选择。
+- `ContactHistory.tsx` 显示并编辑联系人档案中的手记。约见结果可直接跳到手记区。
 - `CircleEditor.tsx` 编辑圈子名称与分组成员。
 - `EmptyState.tsx` 展示空状态与下一步操作。
 - `DateField.tsx` 提供手输日期与站内月历。
